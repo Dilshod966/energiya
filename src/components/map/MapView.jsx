@@ -29,7 +29,7 @@ export default function MapView() {
     <div className="flex-1 relative">
       {/* ── Leaflet Map ── */}
       <MapContainer
-        center={[41.42, 60.52]}
+        center={[41.35, 60.55]}
         zoom={11}
         style={{ height: "100%", width: "100%" }}
         className="z-0"
@@ -42,11 +42,12 @@ export default function MapView() {
 
         {stations.map((station) => {
           const cat = CATEGORIES.find((c) => c.id === station.category);
+          
           return (
             <Marker
               key={station.id}
               position={[station.lat, station.lng]}
-              icon={makeIcon(cat.color, station.status)}
+              icon={makeIcon(station.status === 'active' ? cat.color : (station.status === "maintenance" ? cat.accent[0] : cat.accent[1]), station.status)}
               eventHandlers={{ click: () => setSelected(station) }}
             >
               <Popup className="custom-popup">
@@ -67,7 +68,7 @@ export default function MapView() {
                   <div className="flex items-center justify-between mt-2">
                     <StatusBadge status={station.status} />
                     <span className="text-xs font-bold" style={{ color: cat.color }}>
-                      {station.load}% yuklama
+                      {station.load}% yuklamaaa
                     </span>
                   </div>
                 </div>
@@ -102,7 +103,7 @@ export default function MapView() {
         {[
           ["bg-emerald-400", "Faol"],
           ["bg-amber-400",   "Ta'mirlash"],
-          ["bg-blue-400",    "Qurilish"],
+          ["bg-[#aa0505]",    "Qurilish"],
         ].map(([cls, lbl]) => (
           <div key={lbl} className="flex items-center gap-2 mb-1">
             <div className={`w-2 h-2 rounded-full ${cls}`} />

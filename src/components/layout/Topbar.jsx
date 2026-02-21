@@ -1,5 +1,6 @@
 import { Zap, Layers, Plus, Bell, Menu, X } from "lucide-react";
 import { useStation } from "../../context/StationContext";
+import logo from "./logo2.png"
 
 const NAV_ITEMS = [
   { id: "map",   icon: Layers, label: "Xarita"    },
@@ -14,12 +15,10 @@ export default function Topbar() {
 
       {/* Brand */}
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
-          <Zap size={16} className="text-white" />
-        </div>
+        <img src={logo} alt="Logo" width={"40px"} />
         <div>
           <span className="text-white font-bold text-sm tracking-wide">ELEKTROSET</span>
-          <span className="text-slate-500 text-xs ml-2">Xorazm Viloyati</span>
+          <span className="text-slate-500 text-xs ml-2">Yangiariq tumani</span>
         </div>
       </div>
 
