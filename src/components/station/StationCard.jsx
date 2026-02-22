@@ -19,7 +19,7 @@ export default function StationCard({ station, categoryColor }) {
           className={`w-2 h-2 rounded-full ${
             station.status === "active"       ? "bg-emerald-400" :
             station.status === "maintenance"  ? "bg-amber-400"   :
-                                                "bg-blue-400"
+                                                "bg-[#aa0505]"
           }`}
         />
       </div>

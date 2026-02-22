@@ -64,7 +64,7 @@ export const INITIAL_STATIONS = [
   {
     id: 8, category: "solar", name: "Yangiariq Quyosh Stansiyasi",
     lat: 41.3700, lng: 60.4900, commissioned: "2022-04-01",
-    voltage: "10 kV", capacity: "150 MW", status: "active", load: 72, temp: 27,
+    voltage: "10 kV", capacity: "150 MW", status: "maintenance", load: 72, temp: 27,
     image: "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&q=80",
     description: "Yangiariqdagi yirik quyosh elektr stansiyasi. 450,000 panel.",
     specs: { panels: "450,000", area: "280 ha", efficiency: "21.4%" },
@@ -136,7 +136,7 @@ export const INITIAL_STATIONS = [
   {
     id: 17, category: "substation", name: "Yangiariq TP-7 Turar-joy",
     lat: 41.3920, lng: 60.5950, commissioned: "2010-03-25",
-    voltage: "10/0.4 kV", capacity: "1000 kVA", status: "active", load: 62, temp: 36,
+    voltage: "10/0.4 kV", capacity: "1000 kVA", status: "construction", load: 62, temp: 36,
     image: "https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?w=600&q=80",
     description: "Yangi turar-joy massivi uchun elektr ta'minot tizimi.",
     specs: { transformers: 1, consumers: 1200, type: "Turar-joy" },
@@ -159,11 +159,11 @@ export function StationProvider({ children }) {
   const [selected, setSelected]               = useState(null);
   const [sidebarOpen, setSidebarOpen]         = useState(true);
   const [view, setView]                       = useState("map"); // "map" | "admin"
-  const [expandedCategories, setExpandedCategories] = useState({ highvoltage: true });
+  const [expandedCategories, setExpandedCategories] = useState({});
 
   const addStation    = (s) => setStations((prev) => [...prev, { ...s, id: Date.now() }]);
   const toggleCategory = (id) => setExpandedCategories((p) => ({ ...p, [id]: !p[id] }));
-
+  
   return (
     <StationContext.Provider
       value={{

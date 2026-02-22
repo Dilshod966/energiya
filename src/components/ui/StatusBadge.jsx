@@ -2,7 +2,7 @@
 const STATUS_MAP = {
   active:       ["bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", "Faol"],
   maintenance:  ["bg-amber-500/20  text-amber-400  border border-amber-500/30",  "Ta'mirlashda"],
-  construction: ["bg-blue-500/20   text-blue-400   border border-blue-500/30",   "Qurilishda"],
+  construction: ["bg-[#ff6b6b]   text-[#aa0505]   border border-[#aa0505]",   "Qurilishda"],
 };
 
 export default function StatusBadge({ status }) {

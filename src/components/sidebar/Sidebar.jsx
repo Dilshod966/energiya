@@ -49,7 +49,7 @@ export default function Sidebar() {
               { label: "Jami",      value: counts.total,        color: "text-white"       },
               { label: "Faol",      value: counts.active,       color: "text-emerald-400" },
               { label: "Ta'mirlash",value: counts.maintenance,  color: "text-amber-400"   },
-              { label: "Qurilish",  value: counts.construction, color: "text-blue-400"    },
+              { label: "Qurilish",  value: counts.construction, color: "text-[#aa0505]"    },
             ].map((s) => (
               <div key={s.label} className="bg-[#0f1829] rounded-lg p-3 border border-white/5">
                 <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>

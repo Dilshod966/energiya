@@ -8,7 +8,7 @@ import L from "leaflet";
 export default function makeIcon(color, status) {
   const opacity = 1
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="39" viewBox="0 0 36 44">
       <filter id="shadow">
         <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.4"/>
       </filter>
