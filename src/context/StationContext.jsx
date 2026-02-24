@@ -157,8 +157,8 @@ export const StationContext = createContext(null);
 export function StationProvider({ children }) {
   const [stations, setStations]               = useState(INITIAL_STATIONS);
   const [selected, setSelected]               = useState(null);
-  const [sidebarOpen, setSidebarOpen]         = useState(true);
-  const [view, setView]                       = useState("map"); // "map" | "admin"
+  const [sidebarOpen, setSidebarOpen]         = useState(false);
+  const [view, setView]                       = useState("dashboard"); // "map" | "admin"
   const [expandedCategories, setExpandedCategories] = useState({});
 
   const addStation    = (s) => setStations((prev) => [...prev, { ...s, id: Date.now() }]);

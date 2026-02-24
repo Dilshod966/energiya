@@ -1,14 +1,17 @@
-import { Zap, Layers, Plus, Bell, Menu, X } from "lucide-react";
+import { Zap, Layers, Plus, Bell, Menu, X, LayoutDashboard, Flag } from "lucide-react";
 import { useStation } from "../../context/StationContext";
 import logo from "./logo2.png"
+import { icon } from "leaflet";
 
 const NAV_ITEMS = [
+  { id: "dashboard", icon: LayoutDashboard, label: "Dashboard"},
   { id: "map",   icon: Layers, label: "Xarita"    },
   { id: "admin", icon: Plus,   label: "Qo'shish"  },
 ];
 
 export default function Topbar() {
   const { sidebarOpen, setSidebarOpen, view, setView } = useStation();
+
 
   return (
     <header className="h-14 bg-[#0a0f1a] border-b border-white/5 flex items-center justify-between px-4 flex-shrink-0">
@@ -27,7 +30,12 @@ export default function Topbar() {
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
-            onClick={() => setView(item.id)}
+            onClick={() => {
+              if( view !== 'map') {
+                setSidebarOpen(false);
+              }
+              setView(item.id);
+            }}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
               ${view === item.id ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}
           >
@@ -44,7 +52,7 @@ export default function Topbar() {
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-red-500" />
         </button>
         <button
-          onClick={() => setSidebarOpen((p) => !p)}
+          onClick={() => setSidebarOpen((p) => view === "map" ? !p : p)}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           {sidebarOpen ? <X size={15} /> : <Menu size={15} />}

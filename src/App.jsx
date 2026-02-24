@@ -3,6 +3,7 @@ import Topbar         from "./components/layout/Topbar";
 import MapView        from "./components/map/MapView";
 import Sidebar        from "./components/sidebar/Sidebar";
 import AddStationForm from "./components/admin/AddStationForm";
+import Dashboard from "./components/doashbord/Dashboard";
 
 // ─── Global styles (Leaflet overrides + scrollbar) ────────────────────────────
 const GLOBAL_STYLES = `
@@ -48,7 +49,9 @@ function AppLayout() {
       {/* ② Main body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left area: Map or Admin form */}
-        {view === "map" ? <MapView /> : <AddStationForm />}
+        {view === "map" ? <MapView /> : view === "admin" ?  <AddStationForm /> : <Dashboard/>}
+
+        
 
         {/* Right area: Sidebar (map view only) */}
         {view === "map" && sidebarOpen && <Sidebar />}
