@@ -65,7 +65,7 @@ export default function AddStationForm() {
   const handleLogin = (e) => {
     e.preventDefault();
     // Login: admin, Parol: 12345 (O'zingiz xohlaganga o'zgartiring)
-    if (authForm.username === import.meta.env.VITE_ADMIN_USER && authForm.password === import.meta.env.VITE_ADMIN_PASS) {
+    if (authForm.username === "admin" && authForm.password === "12345") {
       setIsAuthenticated(true);
       setAuthError("");
       setAuthForm({ username: "", password: "" })
