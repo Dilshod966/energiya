@@ -22,7 +22,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 bg-[#0a0f1a] border-l border-white/5 flex flex-col h-full">
+    <aside className="w-80 bg-[#131c2f] border-l border-white/5 flex flex-col h-full">
       {/* ── If a station is selected, show full detail ── */}
       {selected ? (
         <StationDetail station={selected} onClose={() => setSelected(null)} />

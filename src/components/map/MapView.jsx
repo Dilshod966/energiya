@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import {Menu} from "lucide-react"
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 
@@ -12,8 +13,10 @@ delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: "", iconUrl: "", shadowUrl: "" });
 
 export default function MapView() {
-  const { stations, selected, setSelected, CATEGORIES } = useStation();
-  
+  const { stations, selected, setSelected, CATEGORIES, setSidebarOpen } = useStation();
+  useEffect(() => {
+    setSidebarOpen(true);
+  }, [setSidebarOpen]);
   // 1. Barcha hooklarni shartlardan (return) tepaga chiqaramiz
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapType2, setMapType2] = useState("standard");
@@ -91,6 +94,12 @@ export default function MapView() {
             Sputnik
           </button>
         </div>
+        {/* <button
+          onClick={() => setSidebarOpen((p) => (view === "map" ? !p : p))}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <Menu size={15} />
+        </button> */}
 
         <TileLayer
           url={layers[mapType2]}

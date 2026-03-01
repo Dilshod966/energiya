@@ -1,10 +1,12 @@
 import { StationProvider, useStation } from "./context/StationContext";
-import Topbar         from "./components/layout/Topbar";
-import MapView        from "./components/map/MapView";
-import Sidebar        from "./components/sidebar/Sidebar";
+import Topbar from "./components/layout/Topbar";
+import MapView from "./components/map/MapView";
+import Sidebar from "./components/sidebar/Sidebar";
 import AddStationForm from "./components/admin/AddStationForm";
 import Dashboard from "./components/doashbord/Dashboard";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+
 
 // ─── Global styles (Leaflet overrides + scrollbar) ────────────────────────────
 const GLOBAL_STYLES = `
@@ -35,7 +37,38 @@ const GLOBAL_STYLES = `
 
 // ─── Inner layout — reads from StationContext ─────────────────────────────────
 function AppLayout() {
-  const { view, sidebarOpen } = useStation();
+  const { view, sidebarOpen, setusernomi } = useStation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const data = localStorage.getItem("admin_auth");
+
+      if (data) {
+        const auth = JSON.parse(data);
+        const now = new Date().getTime();
+
+        // Vaqtni tekshiramiz
+        if (now > auth) {
+          // VAQT TUGAGAN: Tozalash va Logout
+          localStorage.removeItem("admin_auth");
+          setusernomi("User");
+          // Agar foydalanuvchi admin sahifasida bo'lsa, uni bosh sahifaga otib yuboramiz
+          if (window.location.pathname.startsWith("/admin")) {
+            window.location.href = "/";
+          }
+        } else {
+          // VAQT BOR: Login holatini saqlab qolamiz
+          setusernomi("Admin");
+        }
+      }
+    };
+
+    checkAuth();
+
+    // Foydalanuvchi saytda turganda ham har 30 sekundda tekshirib turish
+    const timer = setInterval(checkAuth, 30000);
+    return () => clearInterval(timer);
+  }, [setusernomi]);
 
   return (
     <div
@@ -47,32 +80,35 @@ function AppLayout() {
       {/* ① Top navigation bar */}
       <Topbar />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         <Routes>
           {/* Asosiy sahifa (Dashboard) */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
 
           {/* Xarita sahifasi */}
-          <Route 
-            path="/map" 
+          <Route
+            path="/map"
             element={
               <>
                 <MapView />
                 {/* Sidebar faqat xarita sahifasida va sidebarOpen bo'lsa chiqadi */}
                 {sidebarOpen && <Sidebar />}
               </>
-            } 
+            }
           />
 
           {/* Admin / Stansiya qo'shish sahifasi */}
-          <Route path="/admin" element={<AddStationForm />} />
+          <Route
+            path="/admin"
+            element={<AddStationForm />}
+          />
 
           {/* Agar foydalanuvchi noto'g'ri manzilga kirsa, bosh sahifaga yuboramiz */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
-      </div>
+    </div>
   );
 }
 

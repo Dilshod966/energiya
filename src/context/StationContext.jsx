@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, use, useContext, useState } from "react";
 import { Zap, Sun, Wind, Building2 } from "lucide-react";
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
@@ -146,9 +146,9 @@ export const INITIAL_STATIONS = [
 
 export const CATEGORIES = [
   { id: "highvoltage", label: "Sektor 1", icon: Zap,      color: "#10b981", accent: ["#fbbf24", "#aa0505"] },
-  { id: "solar",       label: "Sektor 2", icon: Sun,      color: "#10b981", accent:  ["#fbbf24", "#aa0505"] },
-  { id: "wind",        label: "Sektor 3", icon: Wind,     color: "#10b981", accent:  ["#fbbf24", "#aa0505"] },
-  { id: "substation",  label: "Sektor 4", icon: Building2, color: "#10b981", accent:  ["#fbbf24", "#aa0505"] },
+  { id: "solar",       label: "Sektor 2", icon: Zap,      color: "#10b981", accent:  ["#fbbf24", "#aa0505"] },
+  { id: "wind",        label: "Sektor 3", icon: Zap,     color: "#10b981", accent:  ["#fbbf24", "#aa0505"] },
+  { id: "substation",  label: "Sektor 4", icon: Zap, color: "#10b981", accent:  ["#fbbf24", "#aa0505"] },
 ];
 
 // ─── CONTEXT ──────────────────────────────────────────────────────────────────
@@ -157,9 +157,10 @@ export const StationContext = createContext(null);
 export function StationProvider({ children }) {
   const [stations, setStations]               = useState(INITIAL_STATIONS);
   const [selected, setSelected]               = useState(null);
-  const [sidebarOpen, setSidebarOpen]         = useState(false);
+  const [sidebarOpen, setSidebarOpen]         = useState(true);
   const [view, setView]                       = useState("dashboard"); // "map" | "admin"
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [usernomi, setusernomi] = useState("User")
 
   const addStation    = (s) => setStations((prev) => [...prev, { ...s, id: Date.now() }]);
   const toggleCategory = (id) => setExpandedCategories((p) => ({ ...p, [id]: !p[id] }));
@@ -173,6 +174,8 @@ export function StationProvider({ children }) {
         expandedCategories, toggleCategory,
         addStation,
         CATEGORIES,
+        usernomi,
+        setusernomi,
       }}
     >
       {children}

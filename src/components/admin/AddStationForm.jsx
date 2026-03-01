@@ -1,130 +1,113 @@
-import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Upload, Check, AlertCircle, Lock, User, LogOut } from "lucide-react";
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import { useState, useEffect } from "react";
+import {
+  LayoutDashboard,
+  Plus,
+  Zap,
+  Radio,
+  AlertCircle,
+  Database,
+  Lock,
+  User,
+  LogOut,
+  
+} from "lucide-react";
+import "leaflet/dist/leaflet.css";
 import { useStation } from "../../context/StationContext";
-import MapSection from "../map/MapSection";
-
-// Marker sozlamalari
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-    iconUrl: markerIcon,
-    shadowUrl: markerShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
-function Field({ label, error, children }) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
-        {label}
-      </label>
-      {children}
-      {error && (
-        <p className="text-red-400 text-xs mt-1 flex items-center gap-1 animate-pulse">
-          <AlertCircle size={10} />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
 
 export default function AddStationForm() {
-  const { addStation, CATEGORIES, setView } = useStation();
-  const scrollRef = useRef(null);
+  const { setusernomi, usernomi } = useStation();
 
   // --- LOGIN HOLATLARI ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState("");
 
-  // --- FORMA HOLATLARI ---
-  const EMPTY = {
-    name: "",
-    category: "highvoltage",
-    lat: "",
-    lng: "",
-    voltage: "",
-    capacity: "",
-    commissioned: "",
-    description: "",
-    status: "active",
-  };
-
-  const [form, setForm] = useState(EMPTY);
-  const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [fileName, setFileName] = useState("");
+  useEffect(() => {
+    if (usernomi === "Admin") {
+      setIsAuthenticated(true);
+    }
+  }, [usernomi]);
 
   // Loginni tekshirish
   const handleLogin = (e) => {
     e.preventDefault();
+  
     // Login: admin, Parol: 12345 (O'zingiz xohlaganga o'zgartiring)
     if (authForm.username === "admin" && authForm.password === "12345") {
+      const now = new Date().getTime();
+      const expiryTime = now + 1 * 60 * 60 * 1000; // 1 soat (millisekundda)
       setIsAuthenticated(true);
+      setusernomi("Admin");
+      localStorage.setItem('admin_auth',JSON.stringify(expiryTime))
       setAuthError("");
-      setAuthForm({ username: "", password: "" })
+      setAuthForm({ username: "", password: "" });
     } else {
       setAuthError("Login yoki parol noto'g'ri!");
     }
   };
 
-  useEffect(() => {
-    if (submitted) {
-      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  const handleLogout = () => {
+    localStorage.removeItem("admin_auth");
+    setusernomi(null);
+    window.location.href = "/";
+  };
+  
+
+  // 1. Qaysi bo'lim faolligini saqlash uchun state
+  const [activeTab, setActiveTab] = useState("ustachilik");
+
+  const menuItems = [
+    { id: "ustachilik", label: "Ustachilik bo'limlari", icon: LayoutDashboard },
+    { id: "nimstansiya", label: "Nimstansiya", icon: Zap },
+    { id: "liniya", label: "Liniya", icon: Radio },
+    { id: "transformator", label: "Transformator", icon: Database },
+  ];
+
+  // Namuna uchun ma'lumotlar (Buni backend'dan olasiz)
+  const renderTableContent = () => {
+    switch (activeTab) {
+      case "ustachilik":
+        return {
+          title: "Ustachilik bo'limlari",
+          columns: ["Bo'lim nomi", "Mas'ul usta", "NS soni"],
+          data: [
+            {
+              id: 1,
+              name: "1-sonli ustachilik",
+              master: "Eshmuradov N.",
+              count: "12",
+            },
+            {
+              id: 2,
+              name: "2-sonli ustachilik",
+              master: "Jumaniyozov F.",
+              count: "8",
+            },
+          ],
+        };
+      case "nimstansiya":
+        return {
+          title: "Nimstansiyalar ro'yxati",
+          columns: ["Nomi", "Quvvati", "Ulanishlar"],
+          data: [
+            { id: 1, name: "PS Yangiariq", power: "25 MVA", lines: "4 ta" },
+          ],
+        };
+      case "liniya":
+        return {
+          title: "Liniyalar ro'yhati",
+          columns: ["Nomi", "Uzunligi", "Transformatorlar"],
+          data: [
+            { id: 1, name: "HL-10KW liniya", size: "10km", transfor: "25 ta" },
+          ],
+        };
+      // Liniya va Transformator uchun ham shunday...
+      default:
+        return { title: "Ma'lumot topilmadi", columns: [], data: [] };
     }
-  }, [submitted]);
-
-  const set = (k, v) => {
-    setForm((p) => ({ ...p, [k]: v }));
-    setErrors((p) => ({ ...p, [k]: "" }));
   };
 
-  const validate = () => {
-    const e = {};
-    if (!form.name.trim()) e.name = "Nom kiritilishi shart";
-    if (!form.lat) e.lat = "Xaritadan nuqtani tanlang";
-    if (!form.voltage.trim()) e.voltage = "Kuchlanish kiritilishi shart";
-    if (!form.capacity.trim()) e.capacity = "Quvvat kiritilishi shart";
-    if (!form.commissioned) e.commissioned = "Sana kiritilishi shart";
-    return e;
-  };
-
-  const handleSubmit = () => {
-    const e = validate();
-    if (Object.keys(e).length) {
-      setErrors(e);
-      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    addStation({
-      ...form,
-      lat: parseFloat(form.lat),
-      lng: parseFloat(form.lng),
-      load: 0,
-      temp: 25,
-      image: "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=600&q=80",
-      specs: { kuchlanish: form.voltage, quvvat: form.capacity },
-    });
-
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setForm(EMPTY);
-      setFileName("");
-    }, 4000);
-  };
-
-  const inputCls = (key) =>
-    `w-full bg-[#0f1829] border ${
-      errors[key] ? "border-red-500/50" : "border-white/10"
-    } rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors`;
+  const currentTable = renderTableContent();
 
   // --- 1. LOGIN OYNASI ---
   if (!isAuthenticated) {
@@ -136,34 +119,52 @@ export default function AddStationForm() {
               <Lock size={28} />
             </div>
             <h2 className="text-xl font-bold text-white">Xavfsiz Kirish</h2>
-            <p className="text-slate-500 text-sm mt-1">Davom etish uchun autentifikatsiya zarur</p>
+            <p className="text-slate-500 text-sm mt-1">
+              Davom etish uchun autentifikatsiya zarur
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Foydalanuvchi</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Foydalanuvchi
+              </label>
               <div className="relative">
-                <User size={16} className="absolute left-3 top-3 text-slate-600" />
-                <input 
-                  type="text" 
+                <User
+                  size={16}
+                  className="absolute left-3 top-3 text-slate-600"
+                />
+                <input
+                  type="text"
                   className="w-full bg-[#0f1829] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm outline-none focus:border-blue-500/50"
-                  placeholder="admin"
+                  placeholder="login..."
                   value={authForm.username}
-                  onChange={(e) => setAuthForm({...authForm, username: e.target.value})}
+                  autoComplete="off"
+                  onChange={(e) =>
+                    setAuthForm({ ...authForm, username: e.target.value })
+                  }
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Maxfiy Kod</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Maxfiy Kod
+              </label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-3 text-slate-600" />
-                <input 
-                  type="password" 
+                <Lock
+                  size={16}
+                  className="absolute left-3 top-3 text-slate-600"
+                />
+                <input
+                  type="password"
                   className="w-full bg-[#0f1829] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm outline-none focus:border-blue-500/50"
-                  placeholder="••••••••"
+                  placeholder="parol..."
                   value={authForm.password}
-                  onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                  autoComplete="off"
+                  onChange={(e) =>
+                    setAuthForm({ ...authForm, password: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -174,7 +175,10 @@ export default function AddStationForm() {
               </div>
             )}
 
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-white font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95">
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-white font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+            >
               Tizimga Kirish
             </button>
           </form>
@@ -185,110 +189,121 @@ export default function AddStationForm() {
 
   // --- 2. ASOSIY FORMA ---
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#070d18] scroll-smooth min-h-screen pb-10">
-      <div className="max-w-2xl mx-auto p-8">
+    <div className="flex w-full h-full bg-[#0a0f1a] text-slate-300 font-sans overflow-hidden">
+      
+      {/* --- SIDEBAR --- */}
+      {/* h-full va overflow-hidden sidebar o'zidan tashqariga chiqib ketmasligini ta'minlaydi */}
+      <aside className="w-72 border-r border-white/5 bg-[#0a0f1a] flex flex-col shrink-0 h-full overflow-hidden">
         
-        {/* Logout Tugmasi */}
-        <div className="flex justify-end mb-4">
+        {/* Header - Shrink-0 orqali tepada qotiramiz */}
+        <div className="p-8 border-b border-white/5 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-6 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)]"></div>
+            <h2 className="text-white font-black tracking-tighter uppercase text-lg leading-none">
+              Admin Panel
+            </h2>
+          </div>
+        </div>
+
+        {/* Nav - flex-grow va overflow-y-auto faqat menyu qismini skroll qiladi */}
+        <nav className="flex-grow p-4 space-y-1 mt-4 overflow-y-auto custom-scrollbar">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[13px] font-semibold transition-all duration-300 group
+                ${activeTab === item.id
+                  ? "bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-inner"
+                  : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
+                }`}
+            >
+              <item.icon
+                size={18}
+                className={`${activeTab === item.id ? "text-blue-400" : "text-slate-600"} transition-colors`}
+              />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Tugma qismi - mt-auto va shrink-0 uni doim eng pastga mixlab qo'yadi */}
+        <div className="mt-auto p-4 border-t border-white/5 bg-black/40 shrink-0">
           <button 
-            onClick={() => setIsAuthenticated(false)}
-            className="flex items-center gap-2 text-xs text-slate-500 hover:text-red-400 transition-colors bg-white/5 px-3 py-1.5 rounded-lg border border-white/5"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-medium text-red-500/70 hover:bg-red-500/10 hover:text-red-500 transition-all border border-transparent hover:border-red-500/20"
           >
-            <LogOut size={14} /> Chiqish
+            <LogOut size={18} />
+            Tizimdan chiqish
           </button>
         </div>
+      </aside>
 
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-            <Plus size={18} className="text-blue-400" />
-          </div>
+      {/* --- MAIN CONTENT --- */}
+      <main className="flex-1 overflow-y-auto p-10 bg-[#070d18] bg-gradient-to-b from-[#0f172a]/20 to-transparent">
+        <div className="flex justify-between items-end mb-10">
           <div>
-            <h1 className="text-2xl font-bold text-white">Yangi Stansiya Qo'shish</h1>
-            <p className="text-slate-400 text-sm">Ma'lumotlarni to'ldiring va saqlang</p>
-          </div>
-        </div>
-
-        {submitted && (
-          <div className="mb-6 bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-3 animate-in fade-in zoom-in duration-300">
-            <div className="bg-emerald-500 rounded-full p-1">
-              <Check size={14} className="text-[#070d18]" />
-            </div>
-            <p className="text-emerald-400 text-sm font-semibold">
-              Stansiya muvaffaqiyatli qo'shildi!
+            <h1 className="text-3xl font-black text-white tracking-tight mb-2">
+              {currentTable.title}
+            </h1>
+            <p className="text-slate-500 text-sm">
+              Barcha ma'lumotlarni tahrirlash va boshqarish paneli.
             </p>
           </div>
-        )}
-
-        <div className="bg-[#0a0f1a] border border-white/5 rounded-2xl p-6 space-y-5 shadow-xl">
-          <Field label="Stansiya Nomi" error={errors.name}>
-            <input
-              className={inputCls("name")}
-              placeholder="Masalan: Yangiariq tuman 220kV Podstansiya"
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-            />
-          </Field>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Kategoriya">
-              <select className={inputCls("category")} value={form.category} onChange={(e) => set("category", e.target.value)}>
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-[#0f1829]">{c.label}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Holat">
-              <select className={inputCls("status")} value={form.status} onChange={(e) => set("status", e.target.value)}>
-                <option value="active" className="bg-[#0f1829]">Faol</option>
-                <option value="maintenance" className="bg-[#0f1829]">Ta'mirlashda</option>
-                <option value="construction" className="bg-[#0f1829]">Qurilishda</option>
-              </select>
-            </Field>
-          </div>
-
-          <Field label="Joylashuv (Xaritadan tanlang)" error={errors.lat || errors.lng}>
-            <div className="rounded-xl overflow-hidden border border-white/10 h-64">
-                <MapSection form={form} set={set} />
-            </div>
-          </Field>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Kuchlanish" error={errors.voltage}>
-              <input className={inputCls("voltage")} placeholder="220 kV" value={form.voltage} onChange={(e) => set("voltage", e.target.value)} />
-            </Field>
-            <Field label="Quvvat" error={errors.capacity}>
-              <input className={inputCls("capacity")} placeholder="500 MVA" value={form.capacity} onChange={(e) => set("capacity", e.target.value)} />
-            </Field>
-          </div>
-
-          <Field label="Ishga tushirilgan sana" error={errors.commissioned}>
-            <input type="date" className={inputCls("commissioned")} value={form.commissioned} onChange={(e) => set("commissioned", e.target.value)} />
-          </Field>
-
-          <Field label="Tavsif">
-            <textarea className={`${inputCls("description")} resize-none`} rows={3} placeholder="Stansiya haqida..." value={form.description} onChange={(e) => set("description", e.target.value)} />
-          </Field>
-
-          <Field label="Rasm Yuklash">
-            <label className="flex items-center gap-3 w-full bg-[#0f1829] border border-dashed border-white/20 rounded-lg px-4 py-5 cursor-pointer hover:border-blue-500/40 transition-colors group">
-              <Upload size={18} className="text-slate-500 group-hover:text-blue-400" />
-              <div>
-                <p className="text-sm text-slate-400">{fileName || "Rasm tanlash..."}</p>
-                <p className="text-xs text-slate-600">PNG, JPG · Maks 10 MB</p>
-              </div>
-              <input type="file" className="hidden" accept="image/*" onChange={(e) => setFileName(e.target.files[0]?.name || "")} />
-            </label>
-          </Field>
-
-          <button
-            onClick={handleSubmit}
-            className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
-          >
-            <Plus size={16} />
-            Stansiyani Saqlash
+          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-[13px] font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95 shrink-0">
+            <Plus size={18} /> Qo'shish
           </button>
         </div>
-      </div>
+
+        {/* --- DYNAMIC TABLE --- */}
+        <div className="bg-[#1e293b]/20 rounded-[1rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="text-[11px] uppercase tracking-[0.2em] text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
+                {currentTable.columns.map((col, idx) => (
+                  <th key={idx} className="px-8 py-5 font-bold">
+                    {col}
+                  </th>
+                ))}
+                <th className="px-8 py-5 text-right font-bold">Amallar</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {currentTable.data.map((row) => (
+                <tr
+                  key={row.id}
+                  className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.02]"
+                >
+                  {Object.entries(row)
+                    .filter(([key]) => key !== "id")
+                    .map(([_, val], i) => (
+                      <td
+                        key={i}
+                        className={`px-8 py-5 text-sm ${i === 0 ? "text-white font-extrabold" : "text-slate-400"}`}
+                      >
+                        {val}
+                      </td>
+                    ))}
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+                      <button className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all">
+                        Tahrirlash
+                      </button>
+                      <button className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">
+                        O'chirish
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {currentTable.data.length === 0 && (
+            <div className="p-20 text-center text-slate-600 italic">
+              Ma'lumotlar mavjud emas...
+            </div>
+          )}
+        </div>
+      </main>
     </div>
-  );
+    );
 }

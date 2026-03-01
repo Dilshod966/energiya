@@ -51,9 +51,9 @@ function Dashboard() {
           <button className="flex items-center gap-2 bg-[#217346] hover:bg-[#1e663e] px-4 py-2 rounded-lg transition text-sm border border-slate-700">
             <Download size={18} /> Eksport
           </button>
-          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition text-sm font-semibold text-white">
+          {/* <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition text-sm font-semibold text-white">
             <Plus size={18} /> Qo'shish
-          </button>
+          </button> */}
         </div>
       </div>
 

@@ -7,22 +7,23 @@ import {
   X,
   LayoutDashboard,
   Flag,
+  User,
 } from "lucide-react";
 import { useStation } from "../../context/StationContext";
 import logo from "./logo2.png";
 import { icon } from "leaflet";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 const NAV_ITEMS = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { id: "map", icon: Layers, label: "Xarita" }
+  { id: "map", icon: Layers, label: "Xarita" },
 ];
 
 export default function Topbar() {
-  const { sidebarOpen, setSidebarOpen, view, setView } = useStation();
-
+  const { sidebarOpen, setSidebarOpen, view, setView, usernomi } = useStation();
+  const navigate = useNavigate();
   return (
-    <header className="h-14 bg-[#0a0f1a] border-b border-white/5 flex items-center justify-between px-4 flex-shrink-0">
+    <header className="h-14 bg-[#0a0f1a] relative z-[10000] border-b border-white/5 flex items-center justify-between px-4 flex-shrink-0">
       {/* Brand */}
       <div className="flex items-center gap-3">
         <img src={logo} alt="Logo" width={"40px"} />
@@ -64,12 +65,18 @@ export default function Topbar() {
           <Bell size={15} />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-red-500" />
         </button>
-        <button
+        <button onDoubleClick={()=>{navigate('/admin')}} className="h-8 px-3 rounded-lg flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 transition-colors border border-transparent">
+          <span className="text-[11px] font-medium tracking-wider">
+            {usernomi}
+          </span>
+          <User size={15} />
+        </button> 
+        {/* <button
           onClick={() => setSidebarOpen((p) => (view === "map" ? !p : p))}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           {sidebarOpen ? <X size={15} /> : <Menu size={15} />}
-        </button>
+        </button> */}
       </div>
     </header>
   );
