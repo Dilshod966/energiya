@@ -4,6 +4,7 @@ import MapView        from "./components/map/MapView";
 import Sidebar        from "./components/sidebar/Sidebar";
 import AddStationForm from "./components/admin/AddStationForm";
 import Dashboard from "./components/doashbord/Dashboard";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 // ─── Global styles (Leaflet overrides + scrollbar) ────────────────────────────
 const GLOBAL_STYLES = `
@@ -46,17 +47,32 @@ function AppLayout() {
       {/* ① Top navigation bar */}
       <Topbar />
 
-      {/* ② Main body */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left area: Map or Admin form */}
-        {view === "map" ? <MapView /> : view === "admin" ?  <AddStationForm /> : <Dashboard/>}
+        <Routes>
+          {/* Asosiy sahifa (Dashboard) */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard/*" element={<Dashboard />} />
 
-        
+          {/* Xarita sahifasi */}
+          <Route 
+            path="/map" 
+            element={
+              <>
+                <MapView />
+                {/* Sidebar faqat xarita sahifasida va sidebarOpen bo'lsa chiqadi */}
+                {sidebarOpen && <Sidebar />}
+              </>
+            } 
+          />
 
-        {/* Right area: Sidebar (map view only) */}
-        {view === "map" && sidebarOpen && <Sidebar />}
+          {/* Admin / Stansiya qo'shish sahifasi */}
+          <Route path="/admin" element={<AddStationForm />} />
+
+          {/* Agar foydalanuvchi noto'g'ri manzilga kirsa, bosh sahifaga yuboramiz */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
       </div>
-    </div>
+      </div>
   );
 }
 
