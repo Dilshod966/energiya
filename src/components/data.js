@@ -1,8 +1,8 @@
 export const database = {
   ustachilik: [
-    { id: 1, name: "1-sonli ustachilik bo'limi", usta: "Eshmuradov Nodir", ns: 2 },
-    { id: 2, name: "2-sonli ustachilik bo'limi", usta: "Jumaniyozov Faxriddin", ns: 1 },
-    { id: 3, name: "3-sonli ustachilik bo'limi", usta: "Sadullayev Abror", ns: 0 },
+    { id: 1, name: "1-sonli ustachilik bo'limmasi", usta: "Eshmuradov Nodir", ns: 2 },
+    { id: 2, name: "2-sonli ustachilik bo'limmasi", usta: "Jumaniyozov Faxriddin", ns: 1 },
+    { id: 3, name: "3-sonli ustachilik bo'limmasi", usta: "Sadullayev Abror", ns: 0 },
   ],
   nimstansiya: [
     { id: 101, parentId: 1, name: "PS 110/10 'Yangiariq'", quvvat: "25 MVA" },
