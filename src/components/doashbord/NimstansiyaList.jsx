@@ -8,6 +8,14 @@ export default function NimstansiyaList() {
 
   return (
     <>
+      <thead>
+        <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
+          <th className="px-6 py-4 font-medium">Tegishli Transformator</th>
+          <th className="px-6 py-4 text-center font-medium">novi quysaq buladi</th>
+          <th className="px-6 py-4 text-right font-medium">Liniyalar soni</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-800">
       {data.map((item) => (
         <tr
           key={item.id}
@@ -26,6 +34,7 @@ export default function NimstansiyaList() {
           </td>
         </tr>
       ))}
+      </tbody>
     </>
   );
 }

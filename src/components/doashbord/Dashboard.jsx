@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Zap, Radio, Database, Download, Plus } from 'lucide-react';
 
@@ -91,21 +91,14 @@ function Dashboard() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
-                <th className="px-6 py-4 font-medium">Nomi / Ma'lumot</th>
-                <th className="px-6 py-4 text-center font-medium">Turi</th>
-                <th className="px-6 py-4 text-right font-medium">Hajm / Holat</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
+            
               <Routes>
                 <Route index element={<UstachilikList />} />
                 <Route path=":uId" element={<NimstansiyaList />} />
                 <Route path=":uId/:nId" element={<LiniyaList />} />
                 <Route path=":uId/:nId/:lId" element={<TransformatorList />} />
               </Routes>
-            </tbody>
+            
           </table>
         </div>
       </div>

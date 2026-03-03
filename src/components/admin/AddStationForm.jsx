@@ -9,7 +9,6 @@ import {
   Lock,
   User,
   LogOut,
-  
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { useStation } from "../../context/StationContext";
@@ -31,14 +30,14 @@ export default function AddStationForm() {
   // Loginni tekshirish
   const handleLogin = (e) => {
     e.preventDefault();
-  
+
     // Login: admin, Parol: 12345 (O'zingiz xohlaganga o'zgartiring)
     if (authForm.username === "admin" && authForm.password === "12345") {
       const now = new Date().getTime();
       const expiryTime = now + 1 * 60 * 60 * 1000; // 1 soat (millisekundda)
       setIsAuthenticated(true);
       setusernomi("Admin");
-      localStorage.setItem('admin_auth',JSON.stringify(expiryTime))
+      localStorage.setItem("admin_auth", JSON.stringify(expiryTime));
       setAuthError("");
       setAuthForm({ username: "", password: "" });
     } else {
@@ -51,7 +50,6 @@ export default function AddStationForm() {
     setusernomi(null);
     window.location.href = "/";
   };
-  
 
   // 1. Qaysi bo'lim faolligini saqlash uchun state
   const [activeTab, setActiveTab] = useState("ustachilik");
@@ -190,11 +188,9 @@ export default function AddStationForm() {
   // --- 2. ASOSIY FORMA ---
   return (
     <div className="flex w-full h-full bg-[#0a0f1a] text-slate-300 font-sans overflow-hidden">
-      
       {/* --- SIDEBAR --- */}
       {/* h-full va overflow-hidden sidebar o'zidan tashqariga chiqib ketmasligini ta'minlaydi */}
       <aside className="w-72 border-r border-white/5 bg-[#0a0f1a] flex flex-col shrink-0 h-full overflow-hidden">
-        
         {/* Header - Shrink-0 orqali tepada qotiramiz */}
         <div className="p-8 border-b border-white/5 shrink-0">
           <div className="flex items-center gap-3">
@@ -212,10 +208,11 @@ export default function AddStationForm() {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[13px] font-semibold transition-all duration-300 group
-                ${activeTab === item.id
-                  ? "bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-inner"
-                  : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
-                }`}
+  ${
+    activeTab === item.id
+      ? "bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20 shadow-inner"
+      : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
+  }`}
             >
               <item.icon
                 size={18}
@@ -228,7 +225,7 @@ export default function AddStationForm() {
 
         {/* Tugma qismi - mt-auto va shrink-0 uni doim eng pastga mixlab qo'yadi */}
         <div className="mt-auto p-4 border-t border-white/5 bg-black/40 shrink-0">
-          <button 
+          <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-medium text-red-500/70 hover:bg-red-500/10 hover:text-red-500 transition-all border border-transparent hover:border-red-500/20"
           >
@@ -305,5 +302,5 @@ export default function AddStationForm() {
         </div>
       </main>
     </div>
-    );
+  );
 }

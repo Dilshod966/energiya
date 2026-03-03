@@ -8,6 +8,14 @@ export default function LiniyaList() {
 
   return (
     <>
+      <thead>
+        <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
+          <th className="px-6 py-4 font-medium">Nomi / Ma'lumot</th>
+          <th className="px-6 py-4 text-center font-medium">Turi</th>
+          <th className="px-6 py-4 text-right font-medium">Hajm / Holat</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-800">
       {data.map((item) => (
         <tr
           key={item.id}
@@ -26,6 +34,7 @@ export default function LiniyaList() {
           </td>
         </tr>
       ))}
+      </tbody>
     </>
   );
 }
