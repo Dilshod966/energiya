@@ -13,21 +13,66 @@ import {
 import "leaflet/dist/leaflet.css";
 import { useStation } from "../../context/StationContext";
 import AddModal from "./AddModal";
+import {
+  getUstachilik,
+  getNimstansiyalar,
+  getLiniyalar,
+  API,
+  getTransformatorlar, // Axios instance
+} from "../../services/api";
 
 export default function AddStationForm() {
   const { setusernomi, usernomi } = useStation();
   const [modalOpen, setmodalOpen] = useState(false);
-
+  const [activeTab, setActiveTab] = useState("ustachilik");
+  const typeMapping = {
+    ustachilik: 1,
+    nimstansiya: 2,
+    liniya: 3,
+    transformator: 4,
+  };
+  const menuItems = [
+    { id: "ustachilik", label: "Ustachilik bo'limlari", icon: LayoutDashboard },
+    { id: "nimstansiya", label: "Nimstansiya", icon: Zap },
+    { id: "liniya", label: "Liniya", icon: Radio },
+    { id: "transformator", label: "Transformator", icon: Database },
+  ];
+  const tabTitles = {
+    ustachilik: "Ustachilik bo'limlari boshqaruvi",
+    nimstansiya: "Nimstansiyalar va PS nazorati",
+    liniya: "Havo va kabel liniyalari ro'yxati",
+    transformator: "Transformator punktlari (TP/SXP)",
+  };
   // --- LOGIN HOLATLARI ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState("");
 
+  const [stations, setStations] = useState([]);
+
+  const loadCurrentTabData = async () => {
+    try {
+      let res;
+      // activeTab qiymatiga qarab tegishli API chaqiriladi
+      if (activeTab === "ustachilik") res = await getUstachilik();
+      else if (activeTab === "nimstansiya") res = await getNimstansiyalar("all");
+      else if (activeTab === "liniya") res = await getLiniyalar("all");
+      else if (activeTab === "transformator") res = await getTransformatorlar("all")
+      
+
+      setStations(res.data);
+    } catch (err) {
+      console.error("Xatolik:", err);
+    }
+  };
   useEffect(() => {
     if (usernomi === "Admin") {
       setIsAuthenticated(true);
     }
-  }, [usernomi]);
+    if (isAuthenticated) {
+      loadCurrentTabData();
+    }
+  }, [usernomi, activeTab, isAuthenticated]);
 
   // Loginni tekshirish
   const handleLogin = (e) => {
@@ -54,65 +99,50 @@ export default function AddStationForm() {
   };
 
   // 1. Qaysi bo'lim faolligini saqlash uchun state
-  const [activeTab, setActiveTab] = useState("ustachilik");
-  const typeMapping = {
-    ustachilik: 1,
-    nimstansiya: 2,
-    liniya: 3,
-    transformator: 4,
-  };
-  const menuItems = [
-    { id: "ustachilik", label: "Ustachilik bo'limlari", icon: LayoutDashboard },
-    { id: "nimstansiya", label: "Nimstansiya", icon: Zap },
-    { id: "liniya", label: "Liniya", icon: Radio },
-    { id: "transformator", label: "Transformator", icon: Database },
-  ];
 
-  // Namuna uchun ma'lumotlar (Buni backend'dan olasiz)
-  const renderTableContent = () => {
-    switch (activeTab) {
-      case "ustachilik":
-        return {
-          title: "Ustachilik bo'limlari",
-          columns: ["Bo'lim nomi", "Mas'ul usta", "NS soni"],
-          data: [
-            {
-              id: 1,
-              name: "1-sonli ustachilik",
-              master: "Eshmuradov N.",
-              count: "12",
-            },
-            {
-              id: 2,
-              name: "2-sonli ustachilik",
-              master: "Jumaniyozov F.",
-              count: "8",
-            },
-          ],
-        };
-      case "nimstansiya":
-        return {
-          title: "Nimstansiyalar ro'yxati",
-          columns: ["Nomi", "Quvvati", "Ulanishlar"],
-          data: [
-            { id: 1, name: "PS Yangiariq", power: "25 MVA", lines: "4 ta" },
-          ],
-        };
-      case "liniya":
-        return {
-          title: "Liniyalar ro'yhati",
-          columns: ["Nomi", "Uzunligi", "Transformatorlar"],
-          data: [
-            { id: 1, name: "HL-10KW liniya", size: "10km", transfor: "25 ta" },
-          ],
-        };
-      // Liniya va Transformator uchun ham shunday...
-      default:
-        return { title: "Ma'lumot topilmadi", columns: [], data: [] };
-    }
-  };
-
-  const currentTable = renderTableContent();
+  // // Namuna uchun ma'lumotlar (Buni backend'dan olasiz)
+  // const renderTableContent = () => {
+  //   switch (activeTab) {
+  //     case "ustachilik":
+  //       return {
+  //         title: "Ustachilik bo'limlari",
+  //         columns: ["Bo'lim nomi", "Mas'ul usta", "NS soni"],
+  //         data: [
+  //           {
+  //             id: 1,
+  //             name: "1-sonli ustachilik",
+  //             master: "Eshmuradov N.",
+  //             count: "12",
+  //           },
+  //           {
+  //             id: 2,
+  //             name: "2-sonli ustachilik",
+  //             master: "Jumaniyozov F.",
+  //             count: "8",
+  //           },
+  //         ],
+  //       };
+  //     case "nimstansiya":
+  //       return {
+  //         title: "Nimstansiyalar ro'yxati",
+  //         columns: ["Nomi", "Quvvati", "Ulanishlar"],
+  //         data: [
+  //           { id: 1, name: "PS Yangiariq", power: "25 MVA", lines: "4 ta" },
+  //         ],
+  //       };
+  //     case "liniya":
+  //       return {
+  //         title: "Liniyalar ro'yhati",
+  //         columns: ["Nomi", "Uzunligi", "Transformatorlar"],
+  //         data: [
+  //           { id: 1, name: "HL-10KW liniya", size: "10km", transfor: "25 ta" },
+  //         ],
+  //       };
+  //     // Liniya va Transformator uchun ham shunday...
+  //     default:
+  //       return { title: "Ma'lumot topilmadi", columns: [], data: [] };
+  //   }
+  // };
 
   // --- 1. LOGIN OYNASI ---
   if (!isAuthenticated) {
@@ -247,7 +277,7 @@ export default function AddStationForm() {
         <div className="flex justify-between items-end mb-10">
           <div>
             <h1 className="text-3xl font-black text-white tracking-tight mb-2">
-              {currentTable.title}
+              {tabTitles[activeTab] || "Ma'lumotlar jadvali"}
             </h1>
             <p className="text-slate-500 text-sm">
               Barcha ma'lumotlarni tahrirlash va boshqarish paneli.
@@ -265,7 +295,7 @@ export default function AddStationForm() {
             isOpen={modalOpen}
             type={typeMapping[activeTab]} // Liniya sahifasida bo'lsangiz 3, Nimstansiyada 2 va h.k.
             onClose={() => setmodalOpen(false)}
-            refreshData={() => fetchData()} // Sahifadagi ma'lumotlarni qayta yuklovchi funksiya
+            refreshData={() => loadCurrentTabData()} // Sahifadagi ma'lumotlarni qayta yuklovchi funksiya
           />
         </div>
 
@@ -274,36 +304,63 @@ export default function AddStationForm() {
           <table className="w-full text-left">
             <thead>
               <tr className="text-[11px] uppercase tracking-[0.2em] text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
-                {currentTable.columns.map((col, idx) => (
-                  <th key={idx} className="px-8 py-5 font-bold">
-                    {col}
-                  </th>
-                ))}
+                {stations.length > 0 &&
+                  Object.keys(stations[0])
+                    .filter((key) => key !== "id" && key !== "parentId") // Yashirin maydonlarni o'chiramiz
+                    .map((key, idx) => (
+                      <th
+                        key={idx}
+                        className="px-8 py-5 font-bold text-slate-400 text-xs uppercase"
+                      >
+                        {/* Key nomini chiroyli qilish, masalan: name -> Nomi */}
+                        {key === "name"
+                          ? "Nomi"
+                          : key === "usta"
+                            ? "Mas'ul"
+                            : key === "quvvat"
+                              ? "Quvvati"
+                              : key}
+                      </th>
+                    ))}
                 <th className="px-8 py-5 text-right font-bold">Amallar</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {currentTable.data.map((row) => (
+              {stations.map((row) => (
                 <tr
                   key={row.id}
                   className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.02]"
                 >
                   {Object.entries(row)
-                    .filter(([key]) => key !== "id")
-                    .map(([_, val], i) => (
+                    // id va parentId ni jadvalda ko'rsatmaymiz, faqat ma'lumotlarni chiqaramiz
+                    .filter(([key]) => key !== "id" && key !== "parentId")
+                    .map(([key, val], i) => (
                       <td
-                        key={i}
-                        className={`px-8 py-5 text-sm ${i === 0 ? "text-white font-extrabold" : "text-slate-400"}`}
+                        key={key} // i o'rniga key ishlatish yaxshiroq
+                        className={`px-8 py-5 text-sm ${
+                          i === 0
+                            ? "text-white font-extrabold"
+                            : "text-slate-400"
+                        }`}
                       >
-                        {val}
+                        {/* Ma'lumot null bo'lsa bo'sh joy ko'rsatish */}
+                        {val !== null ? val : "-"}
                       </td>
                     ))}
+
+                  {/* Amallar tugmalari */}
                   <td className="px-8 py-5 text-right">
                     <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-                      <button className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all">
+                      <button
+                        onClick={() => handleEdit(row)} // Tahrirlash funksiyasi
+                        className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
+                      >
                         Tahrirlash
                       </button>
-                      <button className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">
+                      <button
+                        onClick={() => handleDelete(row.id)} // O'chirish funksiyasi
+                        className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                      >
                         O'chirish
                       </button>
                     </div>
@@ -312,7 +369,7 @@ export default function AddStationForm() {
               ))}
             </tbody>
           </table>
-          {currentTable.data.length === 0 && (
+          {stations.length === 0 && (
             <div className="p-20 text-center text-slate-600 italic">
               Ma'lumotlar mavjud emas...
             </div>

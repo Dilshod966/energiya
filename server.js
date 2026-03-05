@@ -6,49 +6,59 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MySQL ulanish sozlamalari
+// MySQL Pool yaratish
 const db = await mysql.createPool({
     host: 'localhost',
-    user: 'root', // O'zingizni useringiz
-    password: '', // O'zingizni parolingiz
-    database: 'test'
+    user: 'root',
+    password: '', 
+    database: 'test',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-
 // 1. Ustachilik
-app.post('/api/ustachilik', (req, res) => {
-  const { name, usta } = req.body;
-  db.query("INSERT INTO ustachilik (name, usta) VALUES (?, ?)", [name, usta], (err) => {
-    if (err) return res.status(500).send(err);
-    res.status(201).send("Ustachilik qo'shildi");
-  });
+app.post('/api/ustachilik', async (req, res) => {
+    try {
+        const { name, usta } = req.body;
+        await db.query("INSERT INTO ustachilik (name, usta) VALUES (?, ?)", [name, usta]);
+        res.status(201).json({ message: "Ustachilik qo'shildi" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // 2. Nimstansiya
-app.post('/api/nimstansiya', (req, res) => {
-  const { parentId, name, quvvat } = req.body;
-  db.query("INSERT INTO nimstansiya (parentId, name, quvvat) VALUES (?, ?, ?)", [parentId, name, quvvat], (err) => {
-    if (err) return res.status(500).send(err);
-    res.status(201).send("Nimstansiya qo'shildi");
-  });
+app.post('/api/nimstansiya', async (req, res) => {
+    try {
+        const { parentId, name, quvvat, turi } = req.body; // 'turi' ham qo'shildi
+        await db.query("INSERT INTO nimstansiya (parentId, name, quvvat, turi) VALUES (?, ?, ?, ?)", [parentId, name, quvvat, turi]);
+        res.status(201).json({ message: "Nimstansiya qo'shildi" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // 3. Liniya
-app.post('/api/liniya', (req, res) => {
-  const { parentId, name, uzunlik } = req.body;
-  db.query("INSERT INTO liniya (parentId, name, uzunlik) VALUES (?, ?, ?)", [parentId, name, uzunlik], (err) => {
-    if (err) return res.status(500).send(err);
-    res.status(201).send("Liniya qo'shildi");
-  });
+app.post('/api/liniya', async (req, res) => {
+    try {
+        const { parentId, name, uzunlik, turi } = req.body;
+        await db.query("INSERT INTO liniya (parentId, name, uzunlik, turi) VALUES (?, ?, ?, ?)", [parentId, name, uzunlik, turi]);
+        res.status(201).json({ message: "Liniya qo'shildi" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // 4. Transformator
-app.post('/api/transformator', (req, res) => {
-  const { parentId, name, quvvat, holat } = req.body;
-  db.query("INSERT INTO transformator (parentId, name, quvvat, holat) VALUES (?, ?, ?, ?)", [parentId, name, quvvat, holat], (err) => {
-    if (err) return res.status(500).send(err);
-    res.status(201).send("Transformator qo'shildi");
-  });
+app.post('/api/transformator', async (req, res) => {
+    try {
+        const { parentId, name, quvvat, holat, turi } = req.body;
+        await db.query("INSERT INTO transformator (parentId, name, quvvat, holat, turi) VALUES (?, ?, ?, ?, ?)", [parentId, name, quvvat, holat, turi]);
+        res.status(201).json({ message: "Transformator qo'shildi" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 
@@ -64,6 +74,15 @@ app.get('/api/nimstansiya/all', async (req, res) => {
 app.get('/api/liniya/all', async (req, res) => {
     const [rows] = await db.query('SELECT id, name FROM liniya');
     res.json(rows);
+});
+// Barcha transformatorlarni olish
+app.get('/api/transformator/all', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM transformator');
+        res.json(rows);
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 
