@@ -1,22 +1,22 @@
 import { useParams } from "react-router-dom";
 import { getTransformatorlar } from "../../services/api";
 import { motion } from "framer-motion";
-
+import { useState, useEffect } from "react";
 export default function TransformatorList() {
-  const { nId } = useParams();
+  const { lId } = useParams();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   
   useEffect(() => {
     setLoading(true);
-    getTransformatorlar(nId)
+    getTransformatorlar(lId)
       .then((res) => {
         setData(res.data);
         setLoading(false);
       })
       .catch((err) => console.error(err));
-  }, [nId]);
+  }, [lId]);
 
   
 

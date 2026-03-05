@@ -1,10 +1,24 @@
 // UstachilikList.jsx (Boshqa listlar ham shu mantiqda)
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { database } from "../data";
-
+import { getUstachilik } from "../../services/api";
+import { useState, useEffect } from "react";
 export default function UstachilikList() {
   const navigate = useNavigate();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  
+    useEffect(() => {
+      setLoading(true);
+      getUstachilik()
+        .then((res) => {
+          setData(res.data);
+          setLoading(false);
+        })
+        .catch((err) => console.error(err));
+    }, []);
+  
 
   const container = {
     hidden: { opacity: 0 },
@@ -48,7 +62,7 @@ export default function UstachilikList() {
         animate="show"
         className="divide-y divide-slate-800"
       >
-        {database.ustachilik.map((item) => (
+        {data.map((item) => (
           <motion.tr
             key={item.id}
             variants={itemAnim}

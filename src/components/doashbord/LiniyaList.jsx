@@ -44,7 +44,7 @@ export default function LiniyaList() {
     show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
-  console.log(data)
+  
   return (
     <motion.table
       variants={pageVariants} // Dashboarddan kelayotgan page animatsiyasi

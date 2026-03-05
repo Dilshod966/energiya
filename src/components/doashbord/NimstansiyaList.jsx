@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 export default function NimstansiyaList() {
- const { nId } = useParams();
+ const { uId } = useParams();
    const navigate = useNavigate();
    const [data, setData] = useState([]);
    const [loading, setLoading] = useState(true);
@@ -12,13 +12,13 @@ export default function NimstansiyaList() {
    
    useEffect(() => {
      setLoading(true);
-     getNimstansiyalar(nId)
+     getNimstansiyalar(uId)
        .then((res) => {
          setData(res.data);
          setLoading(false);
        })
        .catch((err) => console.error(err));
-   }, [nId]);
+   }, [uId]);
  
    
  

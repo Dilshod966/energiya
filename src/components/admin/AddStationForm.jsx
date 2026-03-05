@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import {
   LayoutDashboard,
   Plus,
@@ -12,9 +12,11 @@ import {
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { useStation } from "../../context/StationContext";
+import AddModal from "./AddModal";
 
 export default function AddStationForm() {
   const { setusernomi, usernomi } = useStation();
+  const [modalOpen, setmodalOpen] = useState(false);
 
   // --- LOGIN HOLATLARI ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -53,7 +55,12 @@ export default function AddStationForm() {
 
   // 1. Qaysi bo'lim faolligini saqlash uchun state
   const [activeTab, setActiveTab] = useState("ustachilik");
-
+  const typeMapping = {
+    ustachilik: 1,
+    nimstansiya: 2,
+    liniya: 3,
+    transformator: 4,
+  };
   const menuItems = [
     { id: "ustachilik", label: "Ustachilik bo'limlari", icon: LayoutDashboard },
     { id: "nimstansiya", label: "Nimstansiya", icon: Zap },
@@ -246,9 +253,20 @@ export default function AddStationForm() {
               Barcha ma'lumotlarni tahrirlash va boshqarish paneli.
             </p>
           </div>
-          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-[13px] font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95 shrink-0">
+          <button
+            onClick={() => {
+              setmodalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-[13px] font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95 shrink-0"
+          >
             <Plus size={18} /> Qo'shish
           </button>
+          <AddModal
+            isOpen={modalOpen}
+            type={typeMapping[activeTab]} // Liniya sahifasida bo'lsangiz 3, Nimstansiyada 2 va h.k.
+            onClose={() => setmodalOpen(false)}
+            refreshData={() => fetchData()} // Sahifadagi ma'lumotlarni qayta yuklovchi funksiya
+          />
         </div>
 
         {/* --- DYNAMIC TABLE --- */}
