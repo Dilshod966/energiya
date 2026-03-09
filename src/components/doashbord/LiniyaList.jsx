@@ -88,13 +88,13 @@ export default function LiniyaList() {
               {item.uzunlik}
             </td>
             <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.jami} ta
+              {item.jami_trafo || 0} ta
             </td>
             <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.tet} ta
+              {item.tet_trafo || 0} ta
             </td>
             <td className="px-4 py-4 text-center text-blue-400 font-mono w-24">
-              {item.jami - item.tet} ta
+              {item.istemol_trafo || 0} ta
             </td>
           </motion.tr>
         ))}

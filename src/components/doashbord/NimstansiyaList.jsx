@@ -90,13 +90,13 @@ export default function NimstansiyaList() {
               {item.quvvat}
             </td>
             <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.jami} km
+              {item.jami_uzunlik || 0} km
             </td>
             <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.tet} km
+              {item.tet_uzunlik || 0} km
             </td>
             <td className="px-4 py-4 text-center text-blue-400 font-mono w-24">
-              {item.jami - item.tet} km
+              {item.istemol_uzunlik || 0} km
             </td>
           </motion.tr>
         ))}

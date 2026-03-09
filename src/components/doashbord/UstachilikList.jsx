@@ -17,6 +17,7 @@ export default function UstachilikList() {
           setLoading(false);
         })
         .catch((err) => console.error(err));
+        
     }, []);
   
 

@@ -55,10 +55,11 @@ export default function AddStationForm() {
       let res;
       // activeTab qiymatiga qarab tegishli API chaqiriladi
       if (activeTab === "ustachilik") res = await getUstachilik();
-      else if (activeTab === "nimstansiya") res = await getNimstansiyalar("all");
+      else if (activeTab === "nimstansiya")
+        res = await getNimstansiyalar("all");
       else if (activeTab === "liniya") res = await getLiniyalar("all");
-      else if (activeTab === "transformator") res = await getTransformatorlar("all")
-      
+      else if (activeTab === "transformator")
+        res = await getTransformatorlar("all");
 
       setStations(res.data);
     } catch (err) {
@@ -74,6 +75,41 @@ export default function AddStationForm() {
     }
   }, [usernomi, activeTab, isAuthenticated]);
 
+  const handleDelete = async (id) => {
+    // 1. Foydalanuvchidan tasdiqlash so'rash
+    if (!window.confirm("Ushbu ma'lumotni o'chirishga aminmisiz?")) return;
+
+    try {
+      // 2. Backendga DELETE so'rovi yuborish
+      // activeTab orqali endpoint dinamik aniqlanadi (ustachilik, nimstansiya, va h.k.)
+      const response = await fetch(
+        `http://localhost:5000/api/${activeTab}/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (response.ok) {
+        // 3. MUHIM: setData emas, setStations ishlatamiz!
+        setStations((prevStations) =>
+          prevStations.filter((item) => item.id !== id),
+        );
+
+      } else {
+        // Server xatolik qaytarsa (masalan 404 yoki 500)
+        const errorData = await response.json();
+        alert(
+          "Xatolik: " + (errorData.error || "O'chirishda xatolik yuz berdi"),
+        );
+      }
+    } catch (error) {
+      // Tarmoq xatosi yoki server o'chiq bo'lsa
+      console.error("O'chirishda xatolik:", error);
+      alert(
+        "Server bilan bog'lanishda xatolik yuz berdi. Backend ishlayotganini tekshiring.",
+      );
+    }
+  };
   // Loginni tekshirish
   const handleLogin = (e) => {
     e.preventDefault();
@@ -97,52 +133,6 @@ export default function AddStationForm() {
     setusernomi(null);
     window.location.href = "/";
   };
-
-  // 1. Qaysi bo'lim faolligini saqlash uchun state
-
-  // // Namuna uchun ma'lumotlar (Buni backend'dan olasiz)
-  // const renderTableContent = () => {
-  //   switch (activeTab) {
-  //     case "ustachilik":
-  //       return {
-  //         title: "Ustachilik bo'limlari",
-  //         columns: ["Bo'lim nomi", "Mas'ul usta", "NS soni"],
-  //         data: [
-  //           {
-  //             id: 1,
-  //             name: "1-sonli ustachilik",
-  //             master: "Eshmuradov N.",
-  //             count: "12",
-  //           },
-  //           {
-  //             id: 2,
-  //             name: "2-sonli ustachilik",
-  //             master: "Jumaniyozov F.",
-  //             count: "8",
-  //           },
-  //         ],
-  //       };
-  //     case "nimstansiya":
-  //       return {
-  //         title: "Nimstansiyalar ro'yxati",
-  //         columns: ["Nomi", "Quvvati", "Ulanishlar"],
-  //         data: [
-  //           { id: 1, name: "PS Yangiariq", power: "25 MVA", lines: "4 ta" },
-  //         ],
-  //       };
-  //     case "liniya":
-  //       return {
-  //         title: "Liniyalar ro'yhati",
-  //         columns: ["Nomi", "Uzunligi", "Transformatorlar"],
-  //         data: [
-  //           { id: 1, name: "HL-10KW liniya", size: "10km", transfor: "25 ta" },
-  //         ],
-  //       };
-  //     // Liniya va Transformator uchun ham shunday...
-  //     default:
-  //       return { title: "Ma'lumot topilmadi", columns: [], data: [] };
-  //   }
-  // };
 
   // --- 1. LOGIN OYNASI ---
   if (!isAuthenticated) {
@@ -245,11 +235,11 @@ export default function AddStationForm() {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[13px] font-semibold transition-all duration-300 group
-  ${
-    activeTab === item.id
-      ? "bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20 shadow-inner"
-      : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
-  }`}
+                ${
+                  activeTab === item.id
+                    ? "bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20 shadow-inner"
+                    : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
+                }`}
             >
               <item.icon
                 size={18}

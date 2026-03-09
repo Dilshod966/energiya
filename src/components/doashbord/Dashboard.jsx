@@ -8,15 +8,50 @@ import UstachilikList from "./UstachilikList";
 import NimstansiyaList from "./NimstansiyaList";
 import LiniyaList from "./LiniyaList";
 import TransformatorList from "./TransformatorList";
-
-// Animatsiya konfiguratsiyasi
-
+import { API } from "../../services/api"; // API instance
 
 function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedStat, setSelectedStat] = useState(null);
   const modalRef = useRef(null);
+
+  // Barcha ma'lumotlarni saqlash uchun yagona state
+  const [data, setData] = useState({
+    ustachilik: [],
+    nimstansiya: [],
+    liniya: [],
+    transformator: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Backenddan barcha ma'lumotlarni bir marta yuklab olish
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setLoading(true);
+        const [u, n, l, t] = await Promise.all([
+          API.get("/ustachilik"),
+          API.get("/nimstansiya/all"),
+          API.get("/liniya/all"),
+          API.get("/transformator/all")
+        ]);
+
+        setData({
+          ustachilik: u.data,
+          nimstansiya: n.data,
+          liniya: l.data,
+          transformator: t.data
+        });
+      } catch (err) {
+        console.error("Ma'lumotlarni yuklashda xatolik:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, []);
 
   const getTitle = () => {
     const pathnames = location.pathname
@@ -31,46 +66,48 @@ function Dashboard() {
     return `${statsTitles[pathnames.length] || "STATISTIKA"} RO'YXATI`;
   };
 
+  // Statistika kartalari endi kelgan 'data' asosida hisoblanadi
   const stats = [
     {
       id: 1,
       title: "BO'LIMLAR",
-      value: "3",
+      value: data.ustachilik.length,
       sub: "Jami ustachilik bo'limlari",
       icon: <LayoutDashboard size={24} />,
       bg: "bg-[#1e293b]",
-      detail: [
-        "1-ustachilik Eshmuradov Nodir",
-        "2-ustachilik Jumaniyozov Faxriddin",
-        "3-ustachilik Sadullayev Abror",
-      ],
+      detail: data.ustachilik.map(u => `${u.name} — ${u.usta || "Mas'ul biriktirilmagan"}`),
     },
     {
       id: 2,
       title: "NIMSTANSIYALAR",
-      value: "12",
+      value: data.nimstansiya.length,
       sub: "Jami nim stansiyalar",
       icon: <Zap size={24} />,
       bg: "bg-[#1e293b]",
-      detail: ["Tizimdagi barcha faol nimstansiyalar."],
+      detail: data.nimstansiya.map(n => `${n.name} (${n.quvvat || "0"} kVA)`),
     },
     {
       id: 3,
       title: "HL-10 KV UZUNLIK",
-      value: "450",
+      // Liniyalar uzunligi yig'indisini hisoblash
+      value: data.liniya.reduce((sum, item) => sum + Number(item.uzunlik || 0), 0).toFixed(1),
       sub: "km • jami magistral",
       icon: <Radio size={24} />,
-      bg: "bg-[#1e293b]",
-      detail: ["Umumiy tarmoq uzunligi."],
+      bg: "bg-[#1e293b]", 
+      detail: [`Jami ${data.liniya.length} ta liniya tarmog'i mavjud.`],
     },
     {
       id: 4,
       title: "TRANSFORMATORLAR",
-      value: "86",
+      value: data.transformator.length,
       sub: "TET + iste'molchi",
       icon: <Database size={24} />,
       bg: "bg-[#1e293b]",
-      detail: ["Barcha turdagi transformatorlar."],
+      detail: [
+        `Ishchi holatda: ${data.transformator.filter(t => t.holat === "Ishchi").length} ta`,
+        `Nosoz holatda: ${data.transformator.filter(t => t.holat === "Nosoz").length} ta`,
+        `TET hisobida: ${data.transformator.filter(t => t.hisob === "tet").length} ta`
+      ],
     },
   ];
 
@@ -79,7 +116,7 @@ function Dashboard() {
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
+          <div className="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-900/20">
             <LayoutDashboard className="text-white fill-current" size={24} />
           </div>
           <div>
@@ -91,7 +128,7 @@ function Dashboard() {
             </p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-[#217346] hover:bg-[#1e663e] px-4 py-2 rounded-lg transition text-sm border border-slate-700">
+        <button className="flex items-center gap-2 bg-[#217346] hover:bg-[#1e663e] px-4 py-2 rounded-lg transition text-sm border border-slate-700 active:scale-95">
           <Download size={18} /> Eksport
         </button>
       </div>
@@ -104,20 +141,20 @@ function Dashboard() {
             layoutId={`card-${stat.id}`}
             onClick={() => setSelectedStat(stat)}
             whileHover={{ y: -5 }}
-            className={`${stat.bg} p-6 rounded-2xl shadow-lg flex items-start justify-between border border-slate-800 cursor-pointer hover:border-blue-500/50 transition-colors`}
+            className={`${stat.bg} p-6 rounded-2xl shadow-lg flex items-start justify-between border border-slate-800 cursor-pointer hover:border-blue-500/50 transition-colors group`}
           >
             <div>
-              <p className="text-[10px] font-bold opacity-70 mb-1 tracking-widest text-slate-400">
+              <p className="text-[10px] font-bold opacity-70 mb-1 tracking-widest text-slate-400 group-hover:text-blue-400 transition-colors">
                 {stat.title}
               </p>
               <h2 className="text-3xl font-black mb-1 text-white">
-                {stat.value}
+                {loading ? "..." : stat.value}
               </h2>
               <p className="text-[11px] opacity-60 text-slate-300">
                 {stat.sub}
               </p>
             </div>
-            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500">
+            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all">
               {stat.icon}
             </div>
           </motion.div>
@@ -131,7 +168,7 @@ function Dashboard() {
           <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
             {getTitle()}
           </h3>
-          {location.pathname !== "/" && (
+          {location.pathname !== "/" && location.pathname !== "/dashboard" && (
             <motion.button
               whileHover={{ x: -3 }}
               onClick={() => navigate(-1)}
@@ -145,7 +182,6 @@ function Dashboard() {
         <div className="overflow-x-auto relative scrollbar-hide">
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
-              {/* Element ichida table yo'q, u List komponentining o'zida bo'ladi */}
               <Route index element={<UstachilikList />} />
               <Route path=":uId" element={<NimstansiyaList />} />
               <Route path=":uId/:nId" element={<LiniyaList />} />
@@ -164,35 +200,44 @@ function Dashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedStat(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
             />
             <motion.div
               ref={modalRef}
               layoutId={`card-${selectedStat.id}`}
-              className="bg-[#1e293b] border border-slate-700 w-full max-w-md p-8 rounded-3xl shadow-2xl z-10 relative text-white text-center"
+              className="bg-slate-900 border border-slate-800 w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl z-10 relative text-white"
             >
-              <p className="flex items-center justify-center gap-3 text-sm font-bold text-blue-400 tracking-tighter uppercase mb-4">
-                <span>{selectedStat.title}</span>
-                <span className="text-3xl font-black text-white">
-                  {selectedStat.value}
-                </span>
-                <span className="lowercase">
-                  {selectedStat.id === 3 ? "km" : "ta"}
-                </span>
-              </p>
-              <div className="space-y-3 text-left">
-                {selectedStat.detail.map((d, i) => (
-                  <p
-                    key={i}
-                    className="text-slate-300 italic border-l-4 border-blue-500 pl-4 py-1 bg-slate-800/50 rounded-r-lg"
-                  >
-                    {d}
-                  </p>
-                ))}
+                <div className="text-center mb-6">
+                    <p className="text-xs font-bold text-blue-500 tracking-widest uppercase mb-2">{selectedStat.title}</p>
+                    <div className="flex items-center justify-center gap-2">
+                        <span className="text-5xl font-black text-white">{selectedStat.value}</span>
+                        <span className="text-lg text-slate-500 font-medium lowercase">
+                            {selectedStat.id === 3 ? "km" : "ta"}
+                        </span>
+                    </div>
+                </div>
+
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {selectedStat.detail.length > 0 ? (
+                    selectedStat.detail.map((d, i) => (
+                        <motion.p
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          key={i}
+                          className="text-sm text-slate-300 border-l-2 border-blue-500/50 pl-4 py-2 bg-slate-800/40 rounded-r-xl"
+                        >
+                          {d}
+                        </motion.p>
+                      ))
+                ) : (
+                    <p className="text-slate-500 text-center italic">Ma'lumot topilmadi</p>
+                )}
               </div>
+              
               <button
                 onClick={() => setSelectedStat(null)}
-                className="mt-8 w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-all"
+                className="mt-8 w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-900/30 active:scale-95"
               >
                 Tushunarli
               </button>
