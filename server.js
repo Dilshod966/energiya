@@ -106,24 +106,37 @@ app.get("/api/transformator/all", async (req, res) => {
 //   }
 // });
 
-
-app.get('/api/ustachilik', async (req, res) => {
-    try {
-        const query = `
-            SELECT 
-                u.*, 
-                COUNT(n.id) as jami,
-                SUM(CASE WHEN n.hisob = 'tet' THEN 1 ELSE 0 END) as tet,
-                SUM(CASE WHEN n.hisob = 'istemol' THEN 1 ELSE 0 END) as istemol
-            FROM ustachilik u
-            LEFT JOIN nimstansiya n ON u.id = n.parentId
-            GROUP BY u.id
-        `;
-        const [rows] = await db.query(query);
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.get("/api/ustachilik", async (req, res) => {
+  try {
+    const query = `
+    SELECT 
+        u.*, 
+        -- Nimstansiyalar (Soni) - DISTINCT id orqali faqat noyoblarini sanaymiz
+        COUNT(DISTINCT n.id) as n_jami,
+        COUNT(DISTINCT CASE WHEN n.hisob = 'tet' THEN n.id END) as n_tet,
+        COUNT(DISTINCT CASE WHEN n.hisob = 'istemol' THEN n.id END) as n_istemol,
+        
+        -- Liniyalar (Uzunligi km) - SUM ishlatganda takrorlanishni oldini olish
+        ROUND(SUM(DISTINCT CASE WHEN l.id IS NOT NULL THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 1) as l_jami,
+        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'tet' THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 1) as l_tet,
+        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'istemol' THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 1) as l_istemol,
+        
+        -- Transformatorlar (Soni)
+        COUNT(DISTINCT t.id) as t_jami,
+        COUNT(DISTINCT CASE WHEN t.hisob = 'tet' THEN t.id END) as t_tet,
+        COUNT(DISTINCT CASE WHEN t.hisob = 'istemol' THEN t.id END) as t_istemol
+        
+    FROM ustachilik u
+    LEFT JOIN nimstansiya n ON u.id = n.parentId
+    LEFT JOIN liniya l ON n.id = l.parentId
+    LEFT JOIN transformator t ON l.id = t.parentId
+    GROUP BY u.id
+`;
+    const [rows] = await db.query(query);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // // 2. Nimstansiyalar (ParentId bo'yicha)

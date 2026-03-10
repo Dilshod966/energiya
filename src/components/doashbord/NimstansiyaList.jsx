@@ -4,27 +4,38 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 export default function NimstansiyaList() {
- const { uId } = useParams();
-   const navigate = useNavigate();
-   const [data, setData] = useState([]);
-   const [loading, setLoading] = useState(true);
- 
-   
-   useEffect(() => {
-     setLoading(true);
-     getNimstansiyalar(uId)
-       .then((res) => {
-         setData(res.data);
-         setLoading(false);
-       })
-       .catch((err) => console.error(err));
-   }, [uId]);
- 
-   
- 
-   if (loading)
-     return <div className="p-10 text-center text-blue-400">Yuklanmoqda...</div>;
- 
+  const { uId } = useParams();
+  const navigate = useNavigate();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    getNimstansiyalar(uId)
+      .then((res) => {
+        setData(res.data);
+        setLoading(false);
+      })
+      .catch((err) => console.error(err));
+  }, [uId]);
+
+  function StatBlock({ value, label, color, border, km }) {
+    return (
+      <div
+        className={`flex flex-col items-center w-16 ${border ? "border-x border-slate-700/50" : ""}`}
+      >
+        <span className={`${color} font-mono text-[13px] leading-none`}>
+          {value || 0} {km ? "km" : "ta"}
+        </span>
+        <span className="text-[10px] uppercase text-slate-500 mt-1">
+          {label}
+        </span>
+      </div>
+    );
+  }
+
+  if (loading)
+    return <div className="p-10 text-center text-blue-400">Yuklanmoqda...</div>;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -56,14 +67,10 @@ export default function NimstansiyaList() {
       <thead>
         <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
           <th className="px-6 py-4 font-medium">Tegishli Nimstansiyalar</th>
+          <th className="px-6 py-4 text-center font-medium">Liniyalar</th>
+          <th className="px-6 py-4 text-center font-medium">Transformatorlar</th>
           <th className="px-6 py-4 text-center font-medium">
-            Turi / Kuchlanish
-          </th>
-          <th className="px-6 py-4 text-center font-medium">Quvvat (kVA)</th>
-          <th className="px-6 py-4 text-center font-medium">Liniyalar Jami</th>
-          <th className="px-6 py-4 text-center font-medium">TET hisobida</th>
-          <th className="px-6 py-4 text-center font-medium">
-            Istemochli hisobida
+            Batafsil Malumot
           </th>
         </tr>
       </thead>
@@ -83,20 +90,45 @@ export default function NimstansiyaList() {
             <td className="px-6 py-4 text-white font-medium w-[300px]">
               {item.name}
             </td>
-            <td className="px-6 py-4 text-center text-slate-400 text-xs italic w-auto">
-              Nimstansiya???
+            <td className="px-4 py-4 border-r border-slate-700/50">
+              <div className="flex items-center justify-center">
+                <StatBlock
+                  value={item.n_jami}
+                  label="Jami"
+                  color="text-white"
+                />
+                <StatBlock
+                  value={item.n_tet}
+                  label="TET"
+                  color="text-blue-400"
+                  border
+                />
+                <StatBlock
+                  value={item.n_istemol}
+                  label="Iste'mol"
+                  color="text-amber-400"
+                />
+              </div>
             </td>
-            <td className="px-6 py-4 text-center text-emerald-400 font-mono">
-              {item.quvvat}
-            </td>
-            <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.jami_uzunlik || 0} km
-            </td>
-            <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.tet_uzunlik || 0} km
-            </td>
-            <td className="px-4 py-4 text-center text-blue-400 font-mono w-24">
-              {item.istemol_uzunlik || 0} km
+            <td className="px-4 py-4 border-r border-slate-700/50">
+              <div className="flex items-center justify-center">
+                <StatBlock
+                  value={item.n_jami}
+                  label="Jami"
+                  color="text-white"
+                />
+                <StatBlock
+                  value={item.n_tet}
+                  label="TET"
+                  color="text-blue-400"
+                  border
+                />
+                <StatBlock
+                  value={item.n_istemol}
+                  label="Iste'mol"
+                  color="text-amber-400"
+                />
+              </div>
             </td>
           </motion.tr>
         ))}

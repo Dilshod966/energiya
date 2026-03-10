@@ -8,18 +8,30 @@ export default function UstachilikList() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  
-    useEffect(() => {
-      setLoading(true);
-      getUstachilik()
-        .then((res) => {
-          setData(res.data);
-          setLoading(false);
-        })
-        .catch((err) => console.error(err));
-        
-    }, []);
-  
+  useEffect(() => {
+    setLoading(true);
+    getUstachilik()
+      .then((res) => {
+        setData(res.data);
+        setLoading(false);
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  function StatBlock({ value, label, color, border, km }) {
+    return (
+      <div
+        className={`flex flex-col items-center w-16 ${border ? "border-x border-slate-700/50" : ""}`}
+      >
+        <span className={`${color} font-mono text-[13px] leading-none`}>
+          {value || 0} {km ? "km" : "ta"}
+        </span>
+        <span className="text-[10px] uppercase text-slate-500 mt-1">
+          {label}
+        </span>
+      </div>
+    );
+  }
 
   const container = {
     hidden: { opacity: 0 },
@@ -42,18 +54,17 @@ export default function UstachilikList() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="w-full text-left border-collapse"
+      className="w-full text-left border-collapse table-fixed"
     >
       <thead>
         <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
           <th className="px-6 py-4 font-medium">Nomi / Ma'lumot</th>
-          <th className="px-6 py-4 text-left font-medium">Ma'sul hodim</th>
-          <th className="px-6 py-4 text-center font-medium">
-            Nimstansiyalar Jami
+          <th className="px-6 py-4 text-center font-medium w-34">
+            Nimstansiyalar
           </th>
-          <th className="px-6 py-4 text-center font-medium">TET hisobida</th>
-          <th className="px-6 py-4 text-center font-medium">
-            Istemochli hisobida
+          <th className="px-6 py-4 text-center font-medium w-34">Liniyalar</th>
+          <th className="px-6 py-4 text-center font-medium w-34">
+            Transformatorlar
           </th>
         </tr>
       </thead>
@@ -70,20 +81,79 @@ export default function UstachilikList() {
             onClick={() => navigate(`${item.id}`)}
             className="cursor-pointer transition-all hover:bg-slate-700/40 border-b border-slate-800/50"
           >
+            {/* 1. Nomi */}
             <td className="px-6 py-4 text-white font-medium w-[300px]">
-              {item.name}
+              {item.name} <br />
+              <span className="text-slate-500 text-[11px]">{item.usta}</span>
             </td>
-            <td className="px-6 py-4 text-left text-slate-400 text-xs italic w-auto">
-              {item.usta}
+
+            {/* 2. Nimstansiyalar Ustuni */}
+            <td className="px-4 py-4 border-r border-slate-700/50">
+              <div className="flex items-center justify-center">
+                <StatBlock
+                  value={item.n_jami}
+                  label="Jami"
+                  color="text-white"
+                />
+                <StatBlock
+                  value={item.n_tet}
+                  label="TET"
+                  color="text-blue-400"
+                  border
+                />
+                <StatBlock
+                  value={item.n_istemol}
+                  label="Iste'mol"
+                  color="text-amber-400"
+                />
+              </div>
             </td>
-            <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.jami} ta
+
+            {/* 3. Liniyalar Ustuni */}
+            <td className="px-4 py-4 border-r border-slate-700/50">
+              <div className="flex items-center justify-center">
+                <StatBlock
+                  value={item.l_jami}
+                  label="Jami"
+                  color="text-white"
+                  km
+                />
+                <StatBlock
+                  value={item.l_tet}
+                  label="TET"
+                  color="text-blue-400"
+                  border
+                  km
+                />
+                <StatBlock
+                  value={item.l_istemol}
+                  label="Iste'mol"
+                  color="text-amber-400"
+                  km
+                />
+              </div>
             </td>
-            <td className="px-4 py-4 text-center text-blue-400 font-mono border-r border-slate-700/50 w-24">
-              {item.tet} ta
-            </td>
-            <td className="px-4 py-4 text-center text-blue-400 font-mono w-24">
-              {item.jami - item.tet} ta
+
+            {/* 4. Transformatorlar Ustuni */}
+            <td className="px-4 py-4">
+              <div className="flex items-center justify-center">
+                <StatBlock
+                  value={item.t_jami}
+                  label="Jami"
+                  color="text-white"
+                />
+                <StatBlock
+                  value={item.t_tet}
+                  label="TET"
+                  color="text-blue-400"
+                  border
+                />
+                <StatBlock
+                  value={item.t_istemol}
+                  label="Iste'mol"
+                  color="text-amber-400"
+                />
+              </div>
             </td>
           </motion.tr>
         ))}
