@@ -73,26 +73,33 @@ app.post("/api/transformator", async (req, res) => {
   }
 });
 
-// Barcha nimstansiyalarni olish (select uchun)
+// Barcha nimstansiyalarni olish (quvvat bilan birga)
 app.get("/api/nimstansiya/all", async (req, res) => {
-  const [rows] = await db.query("SELECT id, name FROM nimstansiya");
+  // quvvat ustunini ham qo'shdik
+  const [rows] = await db.query("SELECT id, name, quvvat FROM nimstansiya");
   res.json(rows);
 });
 
-// Barcha liniyalarni olish (select uchun)
+// LINIYALAR UCHUN (Nimstansiya nomini qo'shib olish)
 app.get("/api/liniya/all", async (req, res) => {
-  const [rows] = await db.query("SELECT * FROM liniya");
+  const query = `
+    SELECT l.*, n.name AS parentName 
+    FROM liniya l
+    LEFT JOIN nimstansiya n ON l.parentId = n.id
+  `;
+  const [rows] = await db.query(query);
   res.json(rows);
 });
 
-// Barcha transformatorlarni olish
+// TRANSFORMATORLAR UCHUN (Liniya nomini qo'shib olish)
 app.get("/api/transformator/all", async (req, res) => {
-  try {
-    const [rows] = await db.query("SELECT * FROM transformator");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const query = `
+    SELECT t.*, l.name AS parentName 
+    FROM transformator t
+    LEFT JOIN liniya l ON t.parentId = l.id
+  `;
+  const [rows] = await db.query(query);
+  res.json(rows);
 });
 
 // API Endpoints
@@ -157,23 +164,46 @@ app.get("/api/ustachilik", async (req, res) => {
 app.get("/api/nimstansiya/:uId", async (req, res) => {
   try {
     const { uId } = req.params;
+
     const query = `
       SELECT 
-        n.*, 
-        -- Jami uzunlikni hisoblash
-        ROUND(SUM(CAST(l.uzunlik AS DECIMAL(10,2))), 2) as jami_uzunlik,
-        -- TET liniyalar uzunligi
-        ROUND(SUM(CASE WHEN l.hisob = 'tet' THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 2) as tet_uzunlik,
-        -- Iste'molchi liniyalar uzunligi
-        ROUND(SUM(CASE WHEN l.hisob = 'istemol' THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 2) as istemol_uzunlik
+        n.*,
+
+        -- LINIYALAR SONI (O'zgarishsiz qoladi)
+        (SELECT COUNT(*) FROM liniya WHERE parentId = n.id) AS liniya_jami,
+
+        -- LINIYALAR UZUNLIGI (HISOBLAR BO'YICHA)
+        -- 1. Jami uzunlik
+        (SELECT ROUND(SUM(CAST(uzunlik AS DECIMAL(10,2))), 2) 
+         FROM liniya WHERE parentId = n.id) AS jami_uzunlik,
+
+        -- 2. TET hisobidagi liniyalar uzunligi
+        (SELECT ROUND(SUM(CAST(uzunlik AS DECIMAL(10,2))), 2) 
+         FROM liniya WHERE parentId = n.id AND hisob = 'tet') AS uzunlik_tet,
+
+        -- 3. Iste'molchi hisobidagi liniyalar uzunligi
+        (SELECT ROUND(SUM(CAST(uzunlik AS DECIMAL(10,2))), 2) 
+         FROM liniya WHERE parentId = n.id AND hisob = 'istemol') AS uzunlik_istemol,
+
+        -- TRANSFORMATORLAR STATISTIKASI (Liniyalar orqali)
+        (SELECT COUNT(*) FROM transformator 
+         WHERE parentId IN (SELECT id FROM liniya WHERE parentId = n.id)) AS trans_jami,
+        
+        (SELECT COUNT(*) FROM transformator 
+         WHERE hisob = 'tet' AND parentId IN (SELECT id FROM liniya WHERE parentId = n.id)) AS trans_tet,
+         
+        (SELECT COUNT(*) FROM transformator 
+         WHERE hisob = 'istemol' AND parentId IN (SELECT id FROM liniya WHERE parentId = n.id)) AS trans_istemol
+
       FROM nimstansiya n
-      LEFT JOIN liniya l ON n.id = l.parentId
       WHERE n.parentId = ?
-      GROUP BY n.id
     `;
+
     const [rows] = await db.query(query, [uId]);
     res.json(rows);
+
   } catch (err) {
+    console.error("SQL Xatolik:", err);
     res.status(500).json({ error: err.message });
   }
 });

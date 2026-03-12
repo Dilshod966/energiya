@@ -164,7 +164,7 @@ function Dashboard() {
       {/* Main Table Container */}
       <div className="bg-[#1e293b] rounded-2xl border border-slate-800 overflow-hidden shadow-2xl">
         <Breadcrumbs />
-        <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center">
+        <div className="px-6 py-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center">
           <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
             {getTitle()}
           </h3>

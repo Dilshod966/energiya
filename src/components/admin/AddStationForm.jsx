@@ -94,7 +94,6 @@ export default function AddStationForm() {
         setStations((prevStations) =>
           prevStations.filter((item) => item.id !== id),
         );
-
       } else {
         // Server xatolik qaytarsa (masalan 404 yoki 500)
         const errorData = await response.json();
@@ -290,81 +289,106 @@ export default function AddStationForm() {
         </div>
 
         {/* --- DYNAMIC TABLE --- */}
-        <div className="bg-[#1e293b]/20 rounded-[1rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-[0.2em] text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
-                {stations.length > 0 &&
-                  Object.keys(stations[0])
-                    .filter((key) => key !== "id" && key !== "parentId") // Yashirin maydonlarni o'chiramiz
-                    .map((key, idx) => (
-                      <th
-                        key={idx}
-                        className="px-8 py-5 font-bold text-slate-400 text-xs uppercase"
-                      >
-                        {/* Key nomini chiroyli qilish, masalan: name -> Nomi */}
-                        {key === "name"
-                          ? "Nomi"
-                          : key === "usta"
-                            ? "Mas'ul"
-                            : key === "quvvat"
-                              ? "Quvvati"
-                              : key}
-                      </th>
-                    ))}
-                <th className="px-8 py-5 text-right font-bold">Amallar</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {stations.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.02]"
-                >
-                  {Object.entries(row)
-                    // id va parentId ni jadvalda ko'rsatmaymiz, faqat ma'lumotlarni chiqaramiz
-                    .filter(([key]) => key !== "id" && key !== "parentId")
-                    .map(([key, val], i) => (
-                      <td
-                        key={key} // i o'rniga key ishlatish yaxshiroq
-                        className={`px-8 py-5 text-sm ${
-                          i === 0
-                            ? "text-white font-extrabold"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {/* Ma'lumot null bo'lsa bo'sh joy ko'rsatish */}
-                        {val !== null ? val : "-"}
-                      </td>
-                    ))}
-
-                  {/* Amallar tugmalari */}
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-                      <button
-                        onClick={() => handleEdit(row)} // Tahrirlash funksiyasi
-                        className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
-                      >
-                        Tahrirlash
-                      </button>
-                      <button
-                        onClick={() => handleDelete(row.id)} // O'chirish funksiyasi
-                        className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
-                      >
-                        O'chirish
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {stations.length === 0 && (
-            <div className="p-20 text-center text-slate-600 italic">
-              Ma'lumotlar mavjud emas...
-            </div>
+        {/* --- DYNAMIC TABLE --- */}
+<div className="bg-[#1e293b]/20 rounded-[1rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
+  <table className="w-full text-left">
+    <thead>
+      <tr className="text-[11px] uppercase tracking-[0.2em] text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
+        {activeTab === "ustachilik" && (
+          <>
+            <th className="px-8 py-5 font-bold">Bo'lim Nomi</th>
+            <th className="px-8 py-5 font-bold">Usta (Ism/Fam)</th>
+          </>
+        )}
+        {activeTab === "nimstansiya" && (
+          <>
+            <th className="px-8 py-5 font-bold">Nimstansiya Nomi</th>
+            <th className="px-8 py-5 font-bold text-center">Quvvati (kVa)</th>
+          </>
+        )}
+        {activeTab === "liniya" && (
+          <>
+            <th className="px-8 py-5 font-bold">Liniya Nomi</th>
+            <th className="px-8 py-5 font-bold text-center">Uzunlik (km)</th>
+            <th className="px-8 py-5 font-bold text-center">Tegishli Nimstansiya</th>
+          </>
+        )}
+        {activeTab === "transformator" && (
+          <>
+            <th className="px-8 py-5 font-bold">Nomi / Nomeri</th>
+            <th className="px-8 py-5 font-bold text-center">Quvvati (kVA)</th>
+            <th className="px-8 py-5 font-bold text-center">Tegishli Liniya</th>
+          </>
+        )}
+        <th className="px-8 py-5 text-right font-bold">Amallar</th>
+      </tr>
+    </thead>
+    <tbody className="divide-y divide-white/5">
+      {stations.map((row) => (
+        <tr
+          key={row.id}
+          className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.02]"
+        >
+          {/* 1. USTACHILIK: Bo'lim va Usta */}
+          {activeTab === "ustachilik" && (
+            <>
+              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
+              <td className="px-8 py-5 text-sm text-slate-400">{row.usta || "-"}</td>
+            </>
           )}
-        </div>
+
+          {/* 2. NIMSTANSIYA: Nomi va Turi */}
+          {activeTab === "nimstansiya" && (
+            <>
+              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
+              <td className="px-8 py-5 text-sm text-slate-500 italic font-mono text-xs text-center">{row.quvvat} kVa</td>
+            </>
+          )}
+
+          {/* 3. LINIYA: Nomi, Uzunligi va Ota Nimstansiya nomi */}
+          {activeTab === "liniya" && (
+            <>
+              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
+              <td className="px-8 py-5 text-sm text-amber-400 text-center font-mono font-bold">{row.uzunlik || 0} km</td>
+              <td className="px-8 py-5 text-sm text-slate-500 text-center italic">
+                {row.parentName || <span className="text-slate-700">Birikmagan</span>}
+              </td>
+            </>
+          )}
+
+          {/* 4. TRANSFORMATOR: Nomi, Quvvati va Ota Liniya nomi */}
+          {activeTab === "transformator" && (
+            <>
+              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
+              <td className="px-8 py-5 text-sm text-blue-400 text-center font-mono font-bold">{row.quvvat || 0}</td>
+              <td className="px-8 py-5 text-sm text-slate-500 text-center italic">
+                {row.parentName || <span className="text-slate-700">Liniya yo'q</span>}
+              </td>
+            </>
+          )}
+
+          {/* AMALLAR TUGMALARI */}
+          <td className="px-8 py-5 text-right">
+            <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+              <button
+                onClick={() => handleEdit(row)}
+                className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
+              >
+                Tahrirlash
+              </button>
+              <button
+                onClick={() => handleDelete(row.id)}
+                className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+              >
+                O'chirish
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
       </main>
     </div>
   );
