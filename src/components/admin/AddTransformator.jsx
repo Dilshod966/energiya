@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { getLiniyalar, getNimstansiyalar, API } from "../../services/api";
 // Xarita komponentini import qilamiz
 import MapSection from "../map/MapSection";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowDown } from "lucide-react";
 
 export default function AddTransformator({ isOpen, onClose, refreshData }) {
   const [nimstansiyalar, setNimstansiyalar] = useState([]);
@@ -100,15 +100,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
             animate={{ y: 0, opacity: 1 }}
             className="relative w-full max-w-5xl bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl mb-12"
           >
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                await API.post("/transformator", formData);
-                refreshData();
-                onClose();
-              }}
-              className="space-y-6"
-            >
+            <form onSubmit={onSubmit} className="space-y-6">
               <div className="flex justify-between items-center border-b border-slate-800 pb-4">
                 <h3 className="text-2xl font-bold text-blue-500">
                   Yangi Transformator Qo'shish
@@ -285,34 +277,124 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                     ></textarea>
                   </div>
                 </div>
-                <input
-                  name="razryadniklar"
-                  onChange={handleInputChange}
-                  className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
-                  placeholder="Razryadniklar (OPN-10)"
-                />
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <input
+                    name="razedini"
+                    onChange={handleInputChange}
+                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
+                    placeholder="Razedini Teli:"
+                  />
+                  <input
+                    name="razryadniklar"
+                    onChange={handleInputChange}
+                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
+                    placeholder="Razryadniklar:"
+                  />
+                  <input
+                    name="predoxrabiteli10"
+                    onChange={handleInputChange}
+                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
+                    placeholder="Predoxraniteli 10kV:"
+                  />
+                  <input
+                    name="predoxrabiteli4"
+                    onChange={handleInputChange}
+                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
+                    placeholder="Predoxraniteli 0.4kV:"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4">
+                  <div className="flex flex-col gap-3">
+                    <h4 className="flex items-center justify-center gap-1 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                      Izolatori
+                      <ArrowDown className="w-4 h-4" />{" "}
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <input
+                        name="proxodny"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Proxodnye:"
+                      />
+                      <input
+                        name="oporny"
+                        onChange={handleInputChange}
+                        className=" p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Opornye:"
+                      />
+                      <input
+                        name="shina"
+                        onChange={handleInputChange}
+                        className="col-span-2 p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Shina:"
+                      />
+                    </div>
+                  </div>
+                  <textarea
+                    name="rubilniklar"
+                    onChange={handleInputChange}
+                    rows="3"
+                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 resize-none w-full"
+                    placeholder="Rubilniklar / Avtomatlar:"
+                  ></textarea>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-[2fr_1.3fr] gap-4">
+                  <textarea
+                    name="vyvody"
+                    onChange={handleInputChange}
+                    rows="3"
+                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 resize-none w-full"
+                    placeholder="Vyvody:"
+                  ></textarea>
+
+                  <div className="flex flex-col gap-4 min-w-0">
+                    <div className="flex gap-4 min-w-0">
+                      <input
+                        name="fiderlar_soni"
+                        onChange={handleInputChange}
+                        className="flex-1 min-w-0 p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Fiderlar soni:"
+                      />
+                      <input
+                        name="toka"
+                        onChange={handleInputChange}
+                        className="flex-1 min-w-0 p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Toka Transformator:"
+                      />
+                    </div>
+
+                    <h4 className="flex items-center justify-center gap-1 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                      Schotchik
+                      <ArrowDown className="w-4 h-4" />{" "}
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <input
+                        name="tip"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Tip:"
+                      />
+                      <input
+                        name="schotId"
+                        onChange={handleInputChange}
+                        className=" p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="№:"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <input
                   name="izolyatorlar"
                   onChange={handleInputChange}
                   className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                   placeholder="Izolyatorlar (IO-10)"
                 />
-                <input
-                  name="rubilniklar"
-                  onChange={handleInputChange}
-                  className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
-                  placeholder="Rubilniklar / Avtomatlar"
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <input
-                    name="fiderlar_soni"
-                    type="number"
-                    onChange={handleInputChange}
-                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
-                    placeholder="Fiderlar soni"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
               </div>
 
               {/* Zavod ma'lumotlari */}
