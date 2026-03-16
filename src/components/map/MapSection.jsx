@@ -54,7 +54,7 @@ const MapSection = ({ form, set }) => {
 
   return (
     <div className="col-span-2 mt-0">
-      <div className="h-[450px] w-full rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl relative">
+      <div className="h-[295px] w-full rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl relative">
         <MapContainer
           center={[form.lat || 41.35, form.lng || 60.58]}
           zoom={12}

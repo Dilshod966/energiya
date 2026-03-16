@@ -20,8 +20,8 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
     kocha_nomi: "",
     quvvat: "",
     fider: "",
-    kuchlanishi: "10/0.4 kV",
-    tp_turi: "KTPM",
+    kuchlanishi: "",
+    tp_turi: "",
     ishga_tushgan_sana: "",
     zavod_raqami: "",
     ishlab_chiqarilgan_zavod: "",
@@ -29,7 +29,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
     razryadniklar: "",
     izolyatorlar: "",
     rubilniklar: "",
-    fiderlar_soni: "2",
+    fiderlar_soni: "",
     lat: "",
     lng: "",
   };
@@ -381,39 +381,116 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                       <input
                         name="schotId"
                         onChange={handleInputChange}
-                        className=" p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="№:"
                       />
                     </div>
                   </div>
                 </div>
-
-                <input
-                  name="izolyatorlar"
-                  onChange={handleInputChange}
-                  className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
-                  placeholder="Izolyatorlar (IO-10)"
-                />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-              </div>
-
-              {/* Zavod ma'lumotlari */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-emerald-500 uppercase tracking-widest ml-1">
-                  Joylashuv (Xaritadan nuqtani tanlang)
-                </label>
-                <div className="rounded-2xl overflow-hidden border border-emerald-500/20 h-84 shadow-inner relative">
-                  {/* MapSection integratsiyasi */}
-                  <MapSection form={formData} set={setCoord} />
-
-                  {/* Agar koordinata tanlanmagan bo'lsa xatolik xabari */}
-                  {errors.lat && (
-                    <div className="absolute top-2 right-2 z-[1000] bg-red-500/90 text-white text-[10px] px-3 py-1 rounded-full flex items-center gap-1 animate-bounce">
-                      <AlertCircle size={12} /> {errors.lat}
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1.6fr] gap-4">
+                  <div className="flex flex-col gap-4 min-w-0">
+                    <h4 className="flex  items-center justify-center gap-1 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                      Istemolchi Soni
+                      <ArrowDown className="w-4 h-4" />{" "}
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <input
+                        name="istemolchi_jami"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Jami:"
+                      />
+                      <input
+                        name="axoli"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Axoli:"
+                      />
+                      <input
+                        name="ulgurji"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Ulgurji:"
+                      />
                     </div>
-                  )}
+                  </div>
+
+                  <div className="space-y-2 row-span-4">
+                    <label className="block text-[10px] font-bold text-emerald-500 uppercase tracking-widest ml-1">
+                      Joylashuv (Xaritadan nuqtani tanlang)
+                    </label>
+                    <div className="rounded-2xl overflow-hidden border border-emerald-500/20 h-84 shadow-inner relative">
+                      {/* MapSection integratsiyasi */}
+                      <MapSection form={formData} set={setCoord} />
+
+                      {/* Agar koordinata tanlanmagan bo'lsa xatolik xabari */}
+                      {errors.lat && (
+                        <div className="absolute top-2 right-2 z-[1000] bg-red-500/90 text-white text-[10px] px-3 py-1 rounded-full flex items-center gap-1 animate-bounce">
+                          <AlertCircle size={12} /> {errors.lat}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4 min-w-0">
+                    <h4 className="flex items-center justify-center gap-1 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                      Mukammal Tamirlash
+                      <ArrowDown className="w-4 h-4" />{" "}
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <input
+                        name="mukammal_tp"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="TP:"
+                      />
+                      <input
+                        name="mukammal_xl"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="XL:"
+                      />
+                      <input
+                        name="mukammal_km"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="XL km:"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4 min-w-0">
+                    <h4 className="flex items-center justify-center gap-1 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                      Joriy Tamirlash
+                      <ArrowDown className="w-4 h-4" />{" "}
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <input
+                        name="joriy_tp"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="TP:"
+                      />
+                      <input
+                        name="joriy_xl"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="XL:"
+                      />
+                      <input
+                        name="joriy_km"
+                        onChange={handleInputChange}
+                        className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="XL km:"
+                      />
+                    </div>
+                  </div>
+                  <input
+                    name="yuklama"
+                    onChange={handleInputChange}
+                    className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
+                    placeholder="Yuklama: ( %)"
+                  />
                 </div>
               </div>
 
