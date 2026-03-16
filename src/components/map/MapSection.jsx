@@ -53,7 +53,7 @@ const MapSection = ({ form, set }) => {
   };
 
   return (
-    <div className="col-span-2 mt-4">
+    <div className="col-span-2 mt-0">
       <div className="h-[450px] w-full rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl relative">
         <MapContainer
           center={[form.lat || 41.35, form.lng || 60.58]}
@@ -123,7 +123,7 @@ const MapSection = ({ form, set }) => {
         </MapContainer>
       </div>
 
-      <div className="flex gap-6 mt-3 px-2 text-xs font-mono text-cyan-400">
+      <div className="flex gap-6 my-1 ml-1 px-2 text-xs font-mono text-cyan-400">
         <p>Lat: {form.lat || "Tanlanmagan"}</p>
         <p>Lng: {form.lng || "Tanlanmagan"}</p>
       </div>

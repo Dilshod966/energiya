@@ -59,17 +59,90 @@ app.post("/api/liniya", async (req, res) => {
   }
 });
 
-// 4. Transformator (To'g'rilangan: hisob qo'shildi)
+// 4. Transformator (Barcha 23 ta ustun va ierarxiya uchun moslangan)
 app.post("/api/transformator", async (req, res) => {
   try {
-    const { parentId, name, quvvat, holat, turi, hisob } = req.body;
-    await db.query(
-      "INSERT INTO transformator (parentId, name, quvvat, holat, turi, hisob) VALUES (?, ?, ?, ?, ?, ?)",
-      [parentId, name, quvvat, holat, turi, hisob],
-    );
-    res.status(201).json({ message: "Transformator qo'shildi" });
+    // Frontenddan kelayotgan barcha 20 ta maydonni destrukturizatsiya qilamiz
+    const {
+      parentId,               // Tanlangan Liniya ID-si
+      tp_raqami,
+      inventar_raqami,
+      hisob,                  // 'tet' yoki 'istemol'
+      mahalla,
+      kocha_nomi,
+      quvvat,
+      fider,
+      kuchlanishi,
+      tp_turi,
+      ishga_tushgan_sana,
+      zavod_raqami,
+      ishlab_chiqarilgan_zavod,
+      ishlab_chiqarilgan_yili,
+      razryadniklar,
+      izolyatorlar,
+      rubilniklar,
+      fiderlar_soni,
+      lat,
+      lng
+    } = req.body;
+
+    // 1. Majburiy maydonlarni tekshirish
+    // parentId (Liniya) tanlanishi shart, aks holda ierarxiya buziladi
+    if (!parentId || !tp_raqami || !lat || !lng) {
+      return res.status(400).json({
+        error: "Xatolik: Liniya, TP raqami va Koordinatalar yuborilmadi!"
+      });
+    }
+
+    // 2. SQL so'rovi (Jadvalingizdagi ustunlar nomiga mos)
+    const sql = `
+      INSERT INTO transformator (
+        parentId, tp_raqami, inventar_raqami, hisob, mahalla, 
+        kocha_nomi, quvvat, fider, kuchlanishi, tp_turi, 
+        ishga_tushgan_sana, zavod_raqami, ishlab_chiqarilgan_zavod, 
+        ishlab_chiqarilgan_yili, razryadniklar, izolyatorlar, 
+        rubilniklar, fiderlar_soni, lat, lng
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    // 3. Qiymatlarni tartib bilan joylashtirish
+    // Agar ixtiyoriy maydonlar bo'sh kelsa, bazaga NULL yoki default qiymat tushishi uchun || null ishlatamiz
+    const values = [
+      parentId,
+      tp_raqami,
+      inventar_raqami || null,
+      hisob || 'tet',
+      mahalla || null,
+      kocha_nomi || null,
+      quvvat || null,
+      fider || null,
+      kuchlanishi || '10/0.4 kV',
+      tp_turi || 'KTPM',
+      ishga_tushgan_sana || null,
+      zavod_raqami || null,
+      ishlab_chiqarilgan_zavod || null,
+      ishlab_chiqarilgan_yili || null,
+      razryadniklar || null,
+      izolyatorlar || null,
+      rubilniklar || null,
+      fiderlar_soni || 2,
+      lat,
+      lng
+    ];
+
+    const [result] = await db.query(sql, values);
+
+    // Muvaffaqiyatli javob
+    res.status(201).json({
+      success: true,
+      message: "Transformator muvaffaqiyatli saqlandi!",
+      id: result.insertId
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Backend Error:", err);
+    res.status(500).json({
+      error: "Bazaga saqlashda server xatoligi yuz berdi: " + err.message
+    });
   }
 });
 

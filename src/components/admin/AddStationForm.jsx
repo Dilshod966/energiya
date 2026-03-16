@@ -13,6 +13,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import { useStation } from "../../context/StationContext";
 import AddModal from "./AddModal";
+import AddTransformator from "./AddTransformator";
 import {
   getUstachilik,
   getNimstansiyalar,
@@ -47,25 +48,43 @@ export default function AddStationForm() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState("");
+  const [isTrModalOpen, setIsTrModalOpen] = useState(false);
 
   const [stations, setStations] = useState([]);
 
-  const loadCurrentTabData = async () => {
-    try {
-      let res;
-      // activeTab qiymatiga qarab tegishli API chaqiriladi
-      if (activeTab === "ustachilik") res = await getUstachilik();
-      else if (activeTab === "nimstansiya")
-        res = await getNimstansiyalar("all");
-      else if (activeTab === "liniya") res = await getLiniyalar("all");
-      else if (activeTab === "transformator")
-        res = await getTransformatorlar("all");
-
-      setStations(res.data);
-    } catch (err) {
-      console.error("Xatolik:", err);
+  const handleAddClick = () => {
+    // Agar activeTab 4 bo'lsa (Transformator tabida bo'lsak)
+    if (activeTab === "transformator") {
+      setIsTrModalOpen(true);
+    } else {
+      // Qolgan holatlarda (1, 2, 3) umumiy modalni ochamiz
+      setmodalOpen(true);
     }
   };
+
+const loadCurrentTabData = async () => {
+    try {
+      let res;
+
+      if (activeTab === "ustachilik") {
+        res = await getUstachilik();
+      } else if (activeTab === "nimstansiya") {
+        res = await getNimstansiyalar("all");
+      } else if (activeTab === "liniya") {
+        res = await getLiniyalar("all");
+      } else if (activeTab === "transformator") {
+        // MUHIM: Bu funksiya aynan transformatorlarni qaytarishiga ishonch hosil qiling
+        res = await getTransformatorlar("all");
+      }
+
+      if (res && res.data) {
+        setStations(res.data);
+      }
+    } catch (err) {
+      console.error("Ma'lumot yuklashda xatolik (Tab: " + activeTab + "):", err);
+    }
+  };
+
   useEffect(() => {
     if (usernomi === "Admin") {
       setIsAuthenticated(true);
@@ -273,9 +292,7 @@ export default function AddStationForm() {
             </p>
           </div>
           <button
-            onClick={() => {
-              setmodalOpen(true);
-            }}
+            onClick={handleAddClick}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-[13px] font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95 shrink-0"
           >
             <Plus size={18} /> Qo'shish
@@ -286,109 +303,144 @@ export default function AddStationForm() {
             onClose={() => setmodalOpen(false)}
             refreshData={() => loadCurrentTabData()} // Sahifadagi ma'lumotlarni qayta yuklovchi funksiya
           />
+          <AddTransformator
+            isOpen={isTrModalOpen}
+            onClose={() => setIsTrModalOpen(false)}
+            refreshData={() => loadCurrentTabData()}
+            activeTab={activeTab}
+          />
         </div>
 
         {/* --- DYNAMIC TABLE --- */}
-        {/* --- DYNAMIC TABLE --- */}
-<div className="bg-[#1e293b]/20 rounded-[1rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
-  <table className="w-full text-left">
-    <thead>
-      <tr className="text-[11px] uppercase tracking-[0.2em] text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
-        {activeTab === "ustachilik" && (
-          <>
-            <th className="px-8 py-5 font-bold">Bo'lim Nomi</th>
-            <th className="px-8 py-5 font-bold">Usta (Ism/Fam)</th>
-          </>
-        )}
-        {activeTab === "nimstansiya" && (
-          <>
-            <th className="px-8 py-5 font-bold">Nimstansiya Nomi</th>
-            <th className="px-8 py-5 font-bold text-center">Quvvati (kVa)</th>
-          </>
-        )}
-        {activeTab === "liniya" && (
-          <>
-            <th className="px-8 py-5 font-bold">Liniya Nomi</th>
-            <th className="px-8 py-5 font-bold text-center">Uzunlik (km)</th>
-            <th className="px-8 py-5 font-bold text-center">Tegishli Nimstansiya</th>
-          </>
-        )}
-        {activeTab === "transformator" && (
-          <>
-            <th className="px-8 py-5 font-bold">Nomi / Nomeri</th>
-            <th className="px-8 py-5 font-bold text-center">Quvvati (kVA)</th>
-            <th className="px-8 py-5 font-bold text-center">Tegishli Liniya</th>
-          </>
-        )}
-        <th className="px-8 py-5 text-right font-bold">Amallar</th>
-      </tr>
-    </thead>
-    <tbody className="divide-y divide-white/5">
-      {stations.map((row) => (
-        <tr
-          key={row.id}
-          className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.02]"
-        >
-          {/* 1. USTACHILIK: Bo'lim va Usta */}
-          {activeTab === "ustachilik" && (
-            <>
-              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
-              <td className="px-8 py-5 text-sm text-slate-400">{row.usta || "-"}</td>
-            </>
-          )}
+        <div className="bg-[#1e293b]/20 rounded-[1rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="text-[11px] uppercase tracking-[0.2em] text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
+                {activeTab === "ustachilik" && (
+                  <>
+                    <th className="px-8 py-5 font-bold">Bo'lim Nomi</th>
+                    <th className="px-8 py-5 font-bold">Usta (Ism/Fam)</th>
+                  </>
+                )}
+                {activeTab === "nimstansiya" && (
+                  <>
+                    <th className="px-8 py-5 font-bold">Nimstansiya Nomi</th>
+                    <th className="px-8 py-5 font-bold text-center">
+                      Quvvati (kVa)
+                    </th>
+                  </>
+                )}
+                {activeTab === "liniya" && (
+                  <>
+                    <th className="px-8 py-5 font-bold">Liniya Nomi</th>
+                    <th className="px-8 py-5 font-bold text-center">
+                      Uzunlik (km)
+                    </th>
+                    <th className="px-8 py-5 font-bold text-center">
+                      Tegishli Nimstansiya
+                    </th>
+                  </>
+                )}
+                {activeTab === "transformator" && (
+                  <>
+                    <th className="px-8 py-5 font-bold">Nomi / Nomeri</th>
+                    <th className="px-8 py-5 font-bold text-center">
+                      Quvvati (kVA)
+                    </th>
+                    <th className="px-8 py-5 font-bold text-center">
+                      Tegishli Liniya
+                    </th>
+                  </>
+                )}
+                <th className="px-8 py-5 text-right font-bold">Amallar</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {stations.map((row) => (
+                <tr
+                  key={row.id}
+                  className="hover:bg-white/[0.03] transition-colors group border-b border-white/[0.02]"
+                >
+                  {/* 1. USTACHILIK: Bo'lim va Usta */}
+                  {activeTab === "ustachilik" && (
+                    <>
+                      <td className="px-8 py-5 text-sm text-white font-extrabold">
+                        {row.name}
+                      </td>
+                      <td className="px-8 py-5 text-sm text-slate-400">
+                        {row.usta || "-"}
+                      </td>
+                    </>
+                  )}
 
-          {/* 2. NIMSTANSIYA: Nomi va Turi */}
-          {activeTab === "nimstansiya" && (
-            <>
-              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
-              <td className="px-8 py-5 text-sm text-slate-500 italic font-mono text-xs text-center">{row.quvvat} kVa</td>
-            </>
-          )}
+                  {/* 2. NIMSTANSIYA: Nomi va Turi */}
+                  {activeTab === "nimstansiya" && (
+                    <>
+                      <td className="px-8 py-5 text-sm text-white font-extrabold">
+                        {row.name}
+                      </td>
+                      <td className="px-8 py-5 text-sm text-slate-500 italic font-mono text-xs text-center">
+                        {row.quvvat} kVa
+                      </td>
+                    </>
+                  )}
 
-          {/* 3. LINIYA: Nomi, Uzunligi va Ota Nimstansiya nomi */}
-          {activeTab === "liniya" && (
-            <>
-              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
-              <td className="px-8 py-5 text-sm text-amber-400 text-center font-mono font-bold">{row.uzunlik || 0} km</td>
-              <td className="px-8 py-5 text-sm text-slate-500 text-center italic">
-                {row.parentName || <span className="text-slate-700">Birikmagan</span>}
-              </td>
-            </>
-          )}
+                  {/* 3. LINIYA: Nomi, Uzunligi va Ota Nimstansiya nomi */}
+                  {activeTab === "liniya" && (
+                    <>
+                      <td className="px-8 py-5 text-sm text-white font-extrabold">
+                        {row.name}
+                      </td>
+                      <td className="px-8 py-5 text-sm text-amber-400 text-center font-mono font-bold">
+                        {row.uzunlik || 0} km
+                      </td>
+                      <td className="px-8 py-5 text-sm text-slate-500 text-center italic">
+                        {row.parentName || (
+                          <span className="text-slate-700">Birikmagan</span>
+                        )}
+                      </td>
+                    </>
+                  )}
 
-          {/* 4. TRANSFORMATOR: Nomi, Quvvati va Ota Liniya nomi */}
-          {activeTab === "transformator" && (
-            <>
-              <td className="px-8 py-5 text-sm text-white font-extrabold">{row.name}</td>
-              <td className="px-8 py-5 text-sm text-blue-400 text-center font-mono font-bold">{row.quvvat || 0}</td>
-              <td className="px-8 py-5 text-sm text-slate-500 text-center italic">
-                {row.parentName || <span className="text-slate-700">Liniya yo'q</span>}
-              </td>
-            </>
-          )}
+                  {/* 4. TRANSFORMATOR: Nomi, Quvvati va Ota Liniya nomi */}
+                  {activeTab === "transformator" && (
+                    <>
+                      <td className="px-8 py-5 text-sm text-white font-extrabold">
+                        {row.name}
+                      </td>
+                      <td className="px-8 py-5 text-sm text-blue-400 text-center font-mono font-bold">
+                        {row.quvvat || 0}
+                      </td>
+                      <td className="px-8 py-5 text-sm text-slate-500 text-center italic">
+                        {row.parentName || (
+                          <span className="text-slate-700">Liniya yo'q</span>
+                        )}
+                      </td>
+                    </>
+                  )}
 
-          {/* AMALLAR TUGMALARI */}
-          <td className="px-8 py-5 text-right">
-            <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-              <button
-                onClick={() => handleEdit(row)}
-                className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
-              >
-                Tahrirlash
-              </button>
-              <button
-                onClick={() => handleDelete(row.id)}
-                className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
-              >
-                O'chirish
-              </button>
-            </div>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+                  {/* AMALLAR TUGMALARI */}
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+                      <button
+                        onClick={() => handleEdit(row)}
+                        className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
+                      >
+                        Tahrirlash
+                      </button>
+                      <button
+                        onClick={() => handleDelete(row.id)}
+                        className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                      >
+                        O'chirish
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </main>
     </div>
   );

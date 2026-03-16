@@ -25,7 +25,7 @@ export default function Topbar() {
   const { sidebarOpen, setSidebarOpen, view, setView, usernomi } = useStation();
   const navigate = useNavigate();
   return (
-    <header className="h-14 bg-[#0a0f1a] relative z-[10000] border-b border-white/5 flex items-center justify-between px-4 flex-shrink-0">
+    <header className="h-14 bg-[#0a0f1a] relative z-[10000] border-b border-white/5 flex items-center justify-between py-4 px-6 flex-shrink-0">
       {/* Brand */}
       <div className="flex items-center gap-3">
         <img src={logo} alt="Logo" width={"40px"} />
