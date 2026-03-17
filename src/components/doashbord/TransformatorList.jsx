@@ -2,12 +2,12 @@ import { useParams } from "react-router-dom";
 import { getTransformatorlar } from "../../services/api";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { MapPin } from "lucide-react";
 export default function TransformatorList() {
   const { lId } = useParams();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  
   useEffect(() => {
     setLoading(true);
     getTransformatorlar(lId)
@@ -17,8 +17,6 @@ export default function TransformatorList() {
       })
       .catch((err) => console.error(err));
   }, [lId]);
-
-  
 
   if (loading)
     return <div className="p-10 text-center text-blue-400">Yuklanmoqda...</div>;
@@ -50,9 +48,14 @@ export default function TransformatorList() {
     >
       <thead>
         <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
-          <th className="px-6 py-4 font-medium">Nomi / Ma'lumot</th>
-          <th className="px-6 py-4 text-center font-medium">Turi</th>
-          <th className="px-6 py-4 text-right font-medium">Holat</th>
+          <th className="px-6 py-4 font-medium">TP Raqami</th>
+          <th className="px-6 py-4 text-center font-medium">Quvvati</th>
+          <th className="px-6 py-4 text-center font-medium">Manzili</th>
+          <th className="px-6 py-4 text-center font-medium">
+            Mukammal Tamirlash
+          </th>
+          <th className="px-6 py-4 text-center font-medium">Joriy Tamirlash</th>
+          <th className="px-6 py-4 text-center font-medium">Balans</th>
         </tr>
       </thead>
       <motion.tbody
@@ -67,19 +70,39 @@ export default function TransformatorList() {
             variants={rowVariants}
             className="border-b transition-all duration-200 hover:bg-slate-700/30 border-slate-800/50"
           >
-            <td className="px-6 py-4 text-white font-medium">{item.name}</td>
-            <td className="px-6 py-4 text-center text-slate-400 text-xs italic">
-              Transformator
+            <td className="px-6 py-4 text-white font-medium">
+              TP {item.tp_raqami}
             </td>
-            <td className="px-6 py-4 text-right">
+            <td className="px-6 py-4 text-center text-slate-400 text-xs italic">
+              {item.quvvat}
+            </td>
+            <td className="flex gap-2 px-6 py-4 text-center justify-center text-slate-400 text-xs italic">
+              <a
+                href={`https://www.google.com/maps?q=${item.lat},${item.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-all duration-200 active:scale-95"
+                title="Google Maps-da ko'rish"
+              >
+                <MapPin size={20} />
+              </a>
+            </td>
+            <td className="px-6 py-4 text-center text-slate-400 text-xs italic">
+              {item.mukammal_tp}
+            </td>
+            <td className="px-6 py-4 text-center text-slate-400 text-xs italic">
+              {item.joriy_tp}
+            </td>
+
+            <td className="px-6 py-4 text-center">
               <span
-                className={`px-3 py-1 rounded-full text-[10px] font-bold ${
-                  item.holat === "Ishchi"
+                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
+                  item.hisob === "tet"
                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                    : "bg-red-500/10 text-orange-400 border border-slate-700/50"
                 }`}
               >
-                {item.holat}
+                {item.hisob}
               </span>
             </td>
           </motion.tr>

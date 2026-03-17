@@ -26,6 +26,7 @@ export default function AddStationForm() {
   const { setusernomi, usernomi } = useStation();
   const [modalOpen, setmodalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("ustachilik");
+  const [editData, setEditData] = useState(null);
   const typeMapping = {
     ustachilik: 1,
     nimstansiya: 2,
@@ -62,7 +63,7 @@ export default function AddStationForm() {
     }
   };
 
-const loadCurrentTabData = async () => {
+  const loadCurrentTabData = async () => {
     try {
       let res;
 
@@ -81,7 +82,10 @@ const loadCurrentTabData = async () => {
         setStations(res.data);
       }
     } catch (err) {
-      console.error("Ma'lumot yuklashda xatolik (Tab: " + activeTab + "):", err);
+      console.error(
+        "Ma'lumot yuklashda xatolik (Tab: " + activeTab + "):",
+        err,
+      );
     }
   };
 
@@ -128,6 +132,16 @@ const loadCurrentTabData = async () => {
       );
     }
   };
+
+  const handleEdit = (item) => {
+    setEditData(item); // Tanlangan qator ma'lumotini statega saqlaymiz
+    if (activeTab === "transformator") {
+      setIsTrModalOpen(true);
+    } else {
+      setmodalOpen(true);
+    }
+  };
+
   // Loginni tekshirish
   const handleLogin = (e) => {
     e.preventDefault();
@@ -299,15 +313,24 @@ const loadCurrentTabData = async () => {
           </button>
           <AddModal
             isOpen={modalOpen}
-            type={typeMapping[activeTab]} // Liniya sahifasida bo'lsangiz 3, Nimstansiyada 2 va h.k.
-            onClose={() => setmodalOpen(false)}
-            refreshData={() => loadCurrentTabData()} // Sahifadagi ma'lumotlarni qayta yuklovchi funksiya
+            type={typeMapping[activeTab]}
+            onClose={() => {
+              setmodalOpen(false);
+              setEditData(null); // Modal yopilganda editData ni tozalaymiz
+            }}
+            refreshData={() => loadCurrentTabData()}
+            editData={editData} // <--- MANA SHU YERDAN BERIB YUBORAMIZ
           />
+
           <AddTransformator
             isOpen={isTrModalOpen}
-            onClose={() => setIsTrModalOpen(false)}
+            onClose={() => {
+              setIsTrModalOpen(false);
+              setEditData(null); // Modal yopilganda editData ni tozalaymiz
+            }}
             refreshData={() => loadCurrentTabData()}
             activeTab={activeTab}
+            editData={editData} // <--- TRANSFORMER MODALIGA HAM
           />
         </div>
 
@@ -343,7 +366,7 @@ const loadCurrentTabData = async () => {
                 )}
                 {activeTab === "transformator" && (
                   <>
-                    <th className="px-8 py-5 font-bold">Nomi / Nomeri</th>
+                    <th className="px-8 py-5 font-bold">TP Raqami</th>
                     <th className="px-8 py-5 font-bold text-center">
                       Quvvati (kVA)
                     </th>
@@ -406,7 +429,7 @@ const loadCurrentTabData = async () => {
                   {activeTab === "transformator" && (
                     <>
                       <td className="px-8 py-5 text-sm text-white font-extrabold">
-                        {row.name}
+                        {row.tp_raqami}
                       </td>
                       <td className="px-8 py-5 text-sm text-blue-400 text-center font-mono font-bold">
                         {row.quvvat || 0}

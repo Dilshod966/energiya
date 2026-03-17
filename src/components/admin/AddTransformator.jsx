@@ -3,21 +3,32 @@ import { useState, useEffect } from "react";
 import { getLiniyalar, getNimstansiyalar, API } from "../../services/api";
 // Xarita komponentini import qilamiz
 import MapSection from "../map/MapSection";
-import { AlertCircle, ArrowDown } from "lucide-react";
+import { AlertCircle, ArrowDown, X, Upload } from "lucide-react";
 
-export default function AddTransformator({ isOpen, onClose, refreshData }) {
+export default function AddTransformator({
+  isOpen,
+  onClose,
+  refreshData,
+  editData = null,
+}) {
   const [nimstansiyalar, setNimstansiyalar] = useState([]);
   const [allLiniyalar, setAllLiniyalar] = useState([]);
   const [filteredLiniyalar, setFilteredLiniyalar] = useState([]);
   const [selectedPs, setSelectedPs] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
 
   const initialFormState = {
+    // Asosiy bog'liqlik
     parentId: "",
+
+    // Excel dagi asosiy ustunlar
     tp_raqami: "",
     inventar_raqami: "",
-    hisob: "tet",
     mahalla: "",
     kocha_nomi: "",
+
+    // Texnik jihozlar
     quvvat: "",
     fider: "",
     kuchlanishi: "",
@@ -26,12 +37,48 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
     zavod_raqami: "",
     ishlab_chiqarilgan_zavod: "",
     ishlab_chiqarilgan_yili: "",
+    qurilish_tashkiloti: "",
+    trans_ornatilishi: "",
+
+    // Elektr jihozlari
+    razedini: "",
     razryadniklar: "",
-    izolyatorlar: "",
-    rubilniklar: "",
+    predoxrabiteli10: "",
+    predoxrabiteli4: "",
+
+    // Izolyatorlar va shina
+    proxodny: "",
+    oporny: "",
+    shina: "",
+    rubilniklar: "", // Rubilniklar / Avtomatlar
+
+    // Vyvody va Schotchik
+    vyvody: "",
     fiderlar_soni: "",
+    toka: "",
+    tip: "",
+    schotId: "",
+
+    // Istemolchilar
+    istemolchi_jami: "",
+    axoli: "",
+    ulgurji: "",
+
+    // Tamirlash ma'lumotlari
+    mukammal_tp: "",
+    mukammal_xl: "",
+    mukammal_km: "",
+    joriy_tp: "",
+    joriy_xl: "",
+    joriy_km: "",
+    yuklama: "",
+
+    // Koordinatalar (MapSection dan keladi)
     lat: "",
     lng: "",
+
+    // Qo'shimcha (agar kerak bo'lsa)
+    hisob: "tet",
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -41,19 +88,49 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
     if (isOpen) {
       const fetchData = async () => {
         try {
+          // 1. Avval barcha kerakli ro'yxatlarni yuklaymiz
           const [psRes, lineRes] = await Promise.all([
             getNimstansiyalar("all"),
             getLiniyalar("all"),
           ]);
-          setNimstansiyalar(psRes.data || []);
-          setAllLiniyalar(lineRes.data || []);
+
+          const psList = psRes.data || [];
+          const lineList = lineRes.data || [];
+
+          setNimstansiyalar(psList);
+          setAllLiniyalar(lineList);
+
+          // 2. Ro'yxatlar kelganidan keyingina editData bo'lsa formaga yuklaymiz
+          if (editData) {
+            setFormData(editData);
+
+            // Liniya orqali tegishli Nimstansiyani topamiz
+            const line = lineList.find(
+              (l) => String(l.id) === String(editData.parentId),
+            );
+
+            if (line) {
+              const psId = String(line.parentId);
+              setSelectedPs(psId);
+              // Filtrlangan liniyalarni darhol yangilaymiz
+              setFilteredLiniyalar(
+                lineList.filter((l) => String(l.parentId) === psId),
+              );
+            }
+          } else {
+            // Yangi qo'shish bo'lsa tozalaymiz
+            setFormData(initialFormState);
+            setSelectedPs("");
+            setFilteredLiniyalar([]);
+          }
         } catch (err) {
-          console.error(err);
+          console.error("Ma'lumotlarni yuklashda xatolik:", err);
         }
       };
+
       fetchData();
     }
-  }, [isOpen]);
+  }, [isOpen, editData]); // allLiniyalar ni dependency dan olib tashlang, fetchData ichida yuklanyapti
 
   // Xarita uchun maxsus set funksiyasi (Sizning kodingizdagi mantiq bo'yicha)
   const setCoord = (k, v) => {
@@ -75,22 +152,53 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setSelectedFiles((prev) => [...prev, ...files]);
+
+    // Mini-preview yaratish
+    const filePreviews = files.map((file) => URL.createObjectURL(file));
+    setPreviews((prev) => [...prev, ...filePreviews]);
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!formData.lat || !formData.lng) {
       setErrors({ lat: "Xaritadan nuqtani tanlang!" });
       return;
     }
+
+    const formPayload = new FormData();
+
+    // Barcha matnli maydonlarni qo'shish (null bo'lsa bo'sh string yuboramiz)
+    Object.keys(formData).forEach((key) => {
+      formPayload.append(key, formData[key] === null ? "" : formData[key]);
+    });
+
+    // Rasmlarni qo'shish
+    selectedFiles.forEach((file, index) => {
+      const extension = file.name.split(".").pop();
+      const fileName = `TP${formData.tp_raqami || "noma'lum"}_${index}.${extension}`;
+      formPayload.append("images", file, fileName);
+    });
+
     try {
-      await API.post("/transformator", formData);
-      setFormData(initialFormState);
+      // MUHIM: Bu yerda formData emas, formPayload yuborilishi shart!
+      if (editData) {
+        await API.put(`/transformator/${editData.id}`, formPayload);
+      } else {
+        await API.post("/transformator", formPayload);
+      }
+
       refreshData();
       onClose();
     } catch (err) {
-      alert("Xatolik yuz berdi");
+      console.error(err);
+      alert("Saqlashda xatolik yuz berdi");
     }
   };
 
+  const isEdit = !!editData;
   return (
     <AnimatePresence>
       {isOpen && (
@@ -103,7 +211,9 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
             <form onSubmit={onSubmit} className="space-y-6">
               <div className="flex justify-between items-center border-b border-slate-800 pb-4">
                 <h3 className="text-2xl font-bold text-blue-500">
-                  Yangi Transformator Qo'shish
+                  {isEdit
+                    ? "Transformatorni Tahrirlash"
+                    : "Yangi Transformator Qo'shish"}
                 </h3>
                 <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
                   {["tet", "istemol"].map((t) => (
@@ -161,6 +271,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
               <div className="grid grid-cols-1 md:grid-cols-[1fr_1.2fr_1.4fr_1.6fr] gap-4">
                 <input
                   name="tp_raqami"
+                  value={formData.tp_raqami}
                   required
                   onChange={handleInputChange}
                   className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white outline-none"
@@ -168,18 +279,21 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                 />
                 <input
                   name="inventar_raqami"
+                  value={formData.inventar_raqami}
                   onChange={handleInputChange}
                   className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white outline-none"
                   placeholder="Inventar raqami:"
                 />
                 <input
                   name="mahalla"
+                  value={formData.mahalla}
                   onChange={handleInputChange}
                   className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white outline-none"
                   placeholder="Mahalla:"
                 />
                 <input
                   name="kocha_nomi"
+                  value={formData.kocha_nomi}
                   onChange={handleInputChange}
                   className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white outline-none"
                   placeholder="Ko'cha nomi:"
@@ -194,27 +308,30 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                 <div className="grid grid-cols-1 md:grid-cols-[0.3fr_1.9fr_1.9fr_0.3fr] gap-4">
                   <input
                     name="quvvat"
+                    value={formData.quvvat || ""}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Quvvati: (kVA)"
                   />
                   <input
                     name="fider"
+                    value={formData.fider}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Fider nomi:"
                   />
                   <input
                     name="kuchlanishi"
+                    value={formData.kuchlanishi}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Kuchlanishi:"
                   />
                   <select
                     name="tp_turi"
+                    value={String(formData.tp_turi || "")}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 appearance-none cursor-pointer"
-                    defaultValue=""
                   >
                     <option value="" disabled hidden>
                       TP turini tanlang
@@ -233,24 +350,28 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                 <div className="grid grid-cols-1 md:grid-cols-[0.8fr_0.8fr_2fr_0.7fr] gap-4">
                   <input
                     name="ishga_tushgan_sana"
+                    value={formData.ishga_tushgan_sana}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none min-w-0"
                     placeholder="Ishga tushgan yili:"
                   />
                   <input
                     name="zavod_raqami"
+                    value={formData.zavod_raqami}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Zavod raqami:"
                   />
                   <input
                     name="ishlab_chiqarilgan_zavod"
+                    value={formData.ishlab_chiqarilgan_zavod}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Ishlab chiqarilgan zavod:"
                   />
                   <input
                     name="ishlab_chiqarilgan_yili"
+                    value={formData.ishlab_chiqarilgan_yili}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none min-w-0 "
                     placeholder="Yili"
@@ -260,6 +381,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                   <div className="flex flex-col gap-2">
                     <textarea
                       name="qurilish_tashkiloti"
+                      value={formData.qurilish_tashkiloti}
                       onChange={handleInputChange}
                       rows="3"
                       className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 resize-none w-full"
@@ -270,6 +392,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                   <div className="flex flex-col gap-2">
                     <textarea
                       name="trans_ornatilishi"
+                      value={formData.trans_ornatilishi}
                       onChange={handleInputChange}
                       rows="3"
                       className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 resize-none w-full"
@@ -281,24 +404,28 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <input
                     name="razedini"
+                    value={formData.razedini}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Razedini Teli:"
                   />
                   <input
                     name="razryadniklar"
+                    value={formData.razryadniklar}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Razryadniklar:"
                   />
                   <input
                     name="predoxrabiteli10"
+                    value={formData.predoxrabiteli10}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Predoxraniteli 10kV:"
                   />
                   <input
                     name="predoxrabiteli4"
+                    value={formData.predoxrabiteli4}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none"
                     placeholder="Predoxraniteli 0.4kV:"
@@ -314,18 +441,21 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                     <div className="grid grid-cols-2 gap-4">
                       <input
                         name="proxodny"
+                        value={formData.proxodny}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Proxodnye:"
                       />
                       <input
                         name="oporny"
+                        formvalue={formData.oporny || ""}
                         onChange={handleInputChange}
                         className=" p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Opornye:"
                       />
                       <input
                         name="shina"
+                        value={formData.shina}
                         onChange={handleInputChange}
                         className="col-span-2 p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Shina:"
@@ -334,6 +464,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                   </div>
                   <textarea
                     name="rubilniklar"
+                    value={formData.rubilniklar}
                     onChange={handleInputChange}
                     rows="3"
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 resize-none w-full"
@@ -344,6 +475,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                 <div className="grid grid-cols-1 md:grid-cols-[2fr_1.3fr] gap-4">
                   <textarea
                     name="vyvody"
+                    value={formData.vyvody}
                     onChange={handleInputChange}
                     rows="3"
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 resize-none w-full"
@@ -354,12 +486,14 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                     <div className="flex gap-4 min-w-0">
                       <input
                         name="fiderlar_soni"
+                        value={formData.fiderlar_soni}
                         onChange={handleInputChange}
                         className="flex-1 min-w-0 p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Fiderlar soni:"
                       />
                       <input
                         name="toka"
+                        value={formData.toka}
                         onChange={handleInputChange}
                         className="flex-1 min-w-0 p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Toka Transformator:"
@@ -374,12 +508,14 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                     <div className="grid grid-cols-2 gap-4">
                       <input
                         name="tip"
+                        value={formData.tip}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Tip:"
                       />
                       <input
                         name="schotId"
+                        value={formData.schotId}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="№:"
@@ -396,18 +532,21 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                     <div className="grid grid-cols-3 gap-4">
                       <input
                         name="istemolchi_jami"
+                        value={formData.istemolchi_jami}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Jami:"
                       />
                       <input
                         name="axoli"
+                        value={formData.axoli}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Axoli:"
                       />
                       <input
                         name="ulgurji"
+                        value={formData.ulgurji}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="Ulgurji:"
@@ -440,18 +579,21 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                     <div className="grid grid-cols-3 gap-4">
                       <input
                         name="mukammal_tp"
+                        value={formData.mukammal_tp}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="TP:"
                       />
                       <input
                         name="mukammal_xl"
+                        value={formData.mukammal_xl}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="XL:"
                       />
                       <input
                         name="mukammal_km"
+                        value={formData.mukammal_km}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="XL km:"
@@ -467,18 +609,21 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                     <div className="grid grid-cols-3 gap-4">
                       <input
                         name="joriy_tp"
+                        value={formData.joriy_tp}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="TP:"
                       />
                       <input
                         name="joriy_xl"
+                        value={formData.joriy_xl}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="XL:"
                       />
                       <input
                         name="joriy_km"
+                        value={formData.joriy_km}
                         onChange={handleInputChange}
                         className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                         placeholder="XL km:"
@@ -487,10 +632,66 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                   </div>
                   <input
                     name="yuklama"
+                    value={formData.yuklama}
                     onChange={handleInputChange}
                     className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-white outline-none focus:border-blue-500 transition-colors"
                     placeholder="Yuklama: ( %)"
                   />
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-[0.3fr_0.7fr] gap-4 items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
+                {/* Chap tomon 30%: Yuklash tugmasi */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    id="image-upload"
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-blue-500/50 rounded-xl hover:bg-blue-500/10 transition-colors text-blue-400"
+                  >
+                    <Upload size={20} className="mb-1" />
+                    <span className="text-[10px] font-bold uppercase">
+                      Rasm yuklang
+                    </span>
+                  </label>
+                </div>
+
+                {/* O'ng tomon 70%: Mini rasmlar */}
+                <div className="flex gap-2 overflow-x-auto p-1 scrollbar-hide">
+                  {previews.length > 0 ? (
+                    previews.map((src, index) => (
+                      <div key={index} className="relative flex-shrink-0">
+                        <img
+                          src={src}
+                          alt="preview"
+                          className="w-16 h-16 object-cover rounded-lg border border-slate-600 shadow-md"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviews((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            );
+                            setSelectedFiles((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            );
+                          }}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:scale-110 transition-transform"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-slate-500 text-xs italic">
+                      Yuklangan rasmlar bu yerda ko'rinadi...
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -506,7 +707,7 @@ export default function AddTransformator({ isOpen, onClose, refreshData }) {
                   type="submit"
                   className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/40 transition-all active:scale-95"
                 >
-                  Saqlash
+                  {isEdit ? "O'zgarishlarni saqlash" : "Saqlash"}
                 </button>
               </div>
             </form>
