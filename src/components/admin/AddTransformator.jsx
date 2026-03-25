@@ -88,7 +88,6 @@ export default function AddTransformator({
     if (isOpen) {
       const fetchData = async () => {
         try {
-          // 1. Avval barcha kerakli ro'yxatlarni yuklaymiz
           const [psRes, lineRes] = await Promise.all([
             getNimstansiyalar("all"),
             getLiniyalar("all"),
@@ -96,38 +95,57 @@ export default function AddTransformator({
 
           const psList = psRes.data || [];
           const lineList = lineRes.data || [];
-
           setNimstansiyalar(psList);
           setAllLiniyalar(lineList);
 
-          // 2. Ro'yxatlar kelganidan keyingina editData bo'lsa formaga yuklaymiz
           if (editData) {
             setFormData(editData);
 
-            // Liniya orqali tegishli Nimstansiyani topamiz
+            // Rasmlarni qayta tiklash
+            if (editData.images) {
+              const imageArray =
+                typeof editData.images === "string"
+                  ? editData.images
+                      .split(",")
+                      .filter((img) => img.trim() !== "")
+                  : [];
+
+              const backendUrl = "http://localhost:5000";
+              const fullPaths = imageArray.map((img) => ({
+                id: Math.random(), // Unique ID o'chirish uchun
+                url: img.startsWith("http")
+                  ? img
+                  : `${backendUrl}/uploads/${img}`,
+                isServer: true,
+                name: img, // serverdagi asl nomi
+              }));
+
+              setPreviews(fullPaths);
+            } else {
+              setPreviews([]);
+            }
+
             const line = lineList.find(
               (l) => String(l.id) === String(editData.parentId),
             );
-
             if (line) {
               const psId = String(line.parentId);
               setSelectedPs(psId);
-              // Filtrlangan liniyalarni darhol yangilaymiz
               setFilteredLiniyalar(
                 lineList.filter((l) => String(l.parentId) === psId),
               );
             }
           } else {
-            // Yangi qo'shish bo'lsa tozalaymiz
             setFormData(initialFormState);
             setSelectedPs("");
             setFilteredLiniyalar([]);
+            setPreviews([]);
+            setSelectedFiles([]);
           }
         } catch (err) {
-          console.error("Ma'lumotlarni yuklashda xatolik:", err);
+          console.error("Xatolik:", err);
         }
       };
-
       fetchData();
     }
   }, [isOpen, editData]); // allLiniyalar ni dependency dan olib tashlang, fetchData ichida yuklanyapti
@@ -136,6 +154,14 @@ export default function AddTransformator({
   const setCoord = (k, v) => {
     setFormData((prev) => ({ ...prev, [k]: v }));
     if (errors[k]) setErrors((prev) => ({ ...prev, [k]: "" }));
+  };
+
+  const handleRemoveImage = (imgObject) => {
+    setPreviews((prev) => prev.filter((p) => p.id !== imgObject.id));
+    // Agar blob bo'lsa, xotirani bo'shatamiz
+    if (!imgObject.isServer) {
+      URL.revokeObjectURL(imgObject.url);
+    }
   };
 
   const handlePsChange = (e) => {
@@ -154,47 +180,54 @@ export default function AddTransformator({
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    setSelectedFiles((prev) => [...prev, ...files]);
 
-    // Mini-preview yaratish
-    const filePreviews = files.map((file) => URL.createObjectURL(file));
-    setPreviews((prev) => [...prev, ...filePreviews]);
+    const newPreviews = files.map((file) => ({
+      id: Math.random(),
+      url: URL.createObjectURL(file),
+      file: file, // Asl faylni o'zida saqlaymiz
+      isServer: false,
+    }));
+
+    setPreviews((prev) => [...prev, ...newPreviews]);
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.lat || !formData.lng) {
-      setErrors({ lat: "Xaritadan nuqtani tanlang!" });
-      return;
-    }
-
     const formPayload = new FormData();
 
-    // Barcha matnli maydonlarni qo'shish (null bo'lsa bo'sh string yuboramiz)
+    // MUHIM: TP raqami images dan oldin qo'shilishi kerak (Multer o'qiy olishi uchun)
+    formPayload.append("tp_raqami", formData.tp_raqami);
+
+    // 1. Boshqa matnli maydonlar
     Object.keys(formData).forEach((key) => {
-      formPayload.append(key, formData[key] === null ? "" : formData[key]);
+      if (key !== "images" && key !== "tp_raqami") {
+        formPayload.append(key, formData[key] === null ? "" : formData[key]);
+      }
     });
 
-    // Rasmlarni qo'shish
-    selectedFiles.forEach((file, index) => {
-      const extension = file.name.split(".").pop();
-      const fileName = `TP${formData.tp_raqami || "noma'lum"}_${index}.${extension}`;
-      formPayload.append("images", file, fileName);
-    });
+    // 2. Yangi fayllar
+    previews
+      .filter((p) => !p.isServer)
+      .forEach((p) => {
+        formPayload.append("images", p.file);
+      });
+
+    // 3. Bazada qolgan rasmlar (X bosilmaganlari)
+    const existingImages = previews
+      .filter((p) => p.isServer)
+      .map((p) => p.name);
+    formPayload.append("existing_images", existingImages.join(","));
 
     try {
-      // MUHIM: Bu yerda formData emas, formPayload yuborilishi shart!
       if (editData) {
         await API.put(`/transformator/${editData.id}`, formPayload);
       } else {
         await API.post("/transformator", formPayload);
       }
-
       refreshData();
       onClose();
     } catch (err) {
-      console.error(err);
-      alert("Saqlashda xatolik yuz berdi");
+      alert("Saqlashda xatolik!");
     }
   };
 
@@ -640,7 +673,6 @@ export default function AddTransformator({
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-1 md:grid-cols-[0.3fr_0.7fr] gap-4 items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
-                {/* Chap tomon 30%: Yuklash tugmasi */}
                 <div className="relative">
                   <input
                     type="file"
@@ -648,50 +680,30 @@ export default function AddTransformator({
                     accept="image/*"
                     onChange={handleFileChange}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    id="image-upload"
                   />
-                  <label
-                    htmlFor="image-upload"
-                    className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-blue-500/50 rounded-xl hover:bg-blue-500/10 transition-colors text-blue-400"
-                  >
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-blue-500/50 rounded-xl text-blue-400">
                     <Upload size={20} className="mb-1" />
-                    <span className="text-[10px] font-bold uppercase">
-                      Rasm yuklang
-                    </span>
+                    <span className="text-[10px] font-bold">RASM QO'SHISH</span>
                   </label>
                 </div>
 
-                {/* O'ng tomon 70%: Mini rasmlar */}
-                <div className="flex gap-2 overflow-x-auto p-1 scrollbar-hide">
-                  {previews.length > 0 ? (
-                    previews.map((src, index) => (
-                      <div key={index} className="relative flex-shrink-0">
-                        <img
-                          src={src}
-                          alt="preview"
-                          className="w-16 h-16 object-cover rounded-lg border border-slate-600 shadow-md"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPreviews((prev) =>
-                              prev.filter((_, i) => i !== index),
-                            );
-                            setSelectedFiles((prev) =>
-                              prev.filter((_, i) => i !== index),
-                            );
-                          }}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:scale-110 transition-transform"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <span className="text-slate-500 text-xs italic">
-                      Yuklangan rasmlar bu yerda ko'rinadi...
-                    </span>
-                  )}
+                <div className="flex gap-2 overflow-x-auto p-1">
+                  {previews.map((imgObj) => (
+                    <div key={imgObj.id} className="relative flex-shrink-0">
+                      <img
+                        src={imgObj.url}
+                        className="w-16 h-16 object-cover rounded-lg border border-slate-600"
+                        alt="preview"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(imgObj)}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
 

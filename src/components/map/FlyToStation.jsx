@@ -10,7 +10,7 @@ export default function FlyToStation({ station }) {
 
   useEffect(() => {
     if (station) {
-      map.flyTo([station.lat, station.lng], 14, { duration: 1.2 });
+      map.flyTo([station.lat, station.lng], 17  , { duration: 1.2 });
     }
   }, [station, map]);
 

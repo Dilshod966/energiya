@@ -13,8 +13,6 @@ const __dirname = path.dirname(__filename);
 // 2. Yuklanadigan papka manzili
 const uploadDir = path.join(__dirname, "public/uploads/");
 
-
-
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -22,14 +20,15 @@ if (!fs.existsSync(uploadDir)) {
 // 4. Storage sozlamalari
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    cb(null, path.join(__dirname, "public/uploads/"));
   },
   filename: (req, file, cb) => {
-    // Frontenddan yuborilgan original nom bilan saqlash
-    // Eslatma: Bir xil nomli rasmlar bir-birini o'chirib yubormasligi uchun 
-    // Date.now() qo'shish tavsiya etiladi, lekin xohishingizga ko'ra qoldirdim.
-    cb(null, file.originalname);
-  }
+    // tp_raqami orqali nom berish
+    const tp = req.body.tp_raqami || "noma'lum";
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `tp${tp}_${uniqueSuffix}${ext}`);
+  },
 });
 
 const upload = multer({ storage: storage });
@@ -49,7 +48,7 @@ const db = await mysql.createPool({
   queueLimit: 0,
 });
 
-
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // 1. Ustachilik (Odatda buni 'hisob'i bo'lmaydi, lekin kerak bo'lsa qo'shish mumkin)
 app.post("/api/ustachilik", async (req, res) => {
@@ -95,28 +94,63 @@ app.post("/api/liniya", async (req, res) => {
 
 // 4. Transformator (Barcha 23 ta ustun va ierarxiya uchun moslangan)
 // 'images' - frontenddagi FormData name bilan bir xil bo'lishi kerak
-app.post("/api/transformator", upload.array('images'), async (req, res) => {
+app.post("/api/transformator", upload.array("images"), async (req, res) => {
   try {
     // 1. Rasmlar nomlarini yig'ish (database uchun string qilib)
     // Agar rasm yuklanmagan bo'lsa bo'sh string qoladi
-    const imageFiles = req.files ? req.files.map(f => f.filename).join(',') : "";
+    const imageFiles = req.files
+      ? req.files.map((f) => f.filename).join(",")
+      : "";
 
     // 2. req.body dan ma'lumotlarni olish
     const {
-      parentId, tp_raqami, inventar_raqami, mahalla, kocha_nomi,
-      quvvat, fider, kuchlanishi, tp_turi, ishga_tushgan_sana,
-      zavod_raqami, ishlab_chiqarilgan_zavod, ishlab_chiqarilgan_yili,
-      qurilish_tashkiloti, trans_ornatilishi, razedini, razryadniklar,
-      predoxrabiteli10, predoxrabiteli4, proxodny, oporny, shina,
-      rubilniklar, vyvody, fiderlar_soni, toka, tip, schotId,
-      istemolchi_jami, axoli, ulgurji, mukammal_tp, mukammal_xl,
-      mukammal_km, joriy_tp, joriy_xl, joriy_km, yuklama, lat, lng, hisob
+      parentId,
+      tp_raqami,
+      inventar_raqami,
+      mahalla,
+      kocha_nomi,
+      quvvat,
+      fider,
+      kuchlanishi,
+      tp_turi,
+      ishga_tushgan_sana,
+      zavod_raqami,
+      ishlab_chiqarilgan_zavod,
+      ishlab_chiqarilgan_yili,
+      qurilish_tashkiloti,
+      trans_ornatilishi,
+      razedini,
+      razryadniklar,
+      predoxrabiteli10,
+      predoxrabiteli4,
+      proxodny,
+      oporny,
+      shina,
+      rubilniklar,
+      vyvody,
+      fiderlar_soni,
+      toka,
+      tip,
+      schotId,
+      istemolchi_jami,
+      axoli,
+      ulgurji,
+      mukammal_tp,
+      mukammal_xl,
+      mukammal_km,
+      joriy_tp,
+      joriy_xl,
+      joriy_km,
+      yuklama,
+      lat,
+      lng,
+      hisob,
     } = req.body;
 
     // 3. Majburiy maydonlarni tekshirish
     if (!parentId || !tp_raqami || !lat || !lng) {
       return res.status(400).json({
-        error: "Xatolik: Liniya, TP raqami va Koordinatalar bo'lishi shart!"
+        error: "Xatolik: Liniya, TP raqami va Koordinatalar bo'lishi shart!",
       });
     }
 
@@ -132,20 +166,52 @@ app.post("/api/transformator", upload.array('images'), async (req, res) => {
         istemolchi_jami, axoli, ulgurji, mukammal_tp, mukammal_xl,
         mukammal_km, joriy_tp, joriy_xl, joriy_km, yuklama, lat, lng, hisob,
         images
-      ) VALUES (${new Array(42).fill('?').join(', ')})`;
+      ) VALUES (${new Array(42).fill("?").join(", ")})`;
 
     // 5. Qiymatlar massivi
     const values = [
-      parentId, tp_raqami, inventar_raqami || null, mahalla || null, kocha_nomi || null,
-      quvvat || null, fider || null, kuchlanishi || null, tp_turi || null, ishga_tushgan_sana || null,
-      zavod_raqami || null, ishlab_chiqarilgan_zavod || null, ishlab_chiqarilgan_yili || null,
-      qurilish_tashkiloti || null, trans_ornatilishi || null, razedini || null, razryadniklar || null,
-      predoxrabiteli10 || null, predoxrabiteli4 || null, proxodny || null, oporny || null, shina || null,
-      rubilniklar || null, vyvody || null, fiderlar_soni || 0, toka || null, tip || null, schotId || null,
-      istemolchi_jami || 0, axoli || 0, ulgurji || 0, mukammal_tp || null, mukammal_xl || null,
-      mukammal_km || null, joriy_tp || null, joriy_xl || null, joriy_km || null, yuklama || null,
-      lat, lng, hisob || 'tet',
-      imageFiles // Eng oxirgi 42-ustun
+      parentId,
+      tp_raqami,
+      inventar_raqami || null,
+      mahalla || null,
+      kocha_nomi || null,
+      quvvat || null,
+      fider || null,
+      kuchlanishi || null,
+      tp_turi || null,
+      ishga_tushgan_sana || null,
+      zavod_raqami || null,
+      ishlab_chiqarilgan_zavod || null,
+      ishlab_chiqarilgan_yili || null,
+      qurilish_tashkiloti || null,
+      trans_ornatilishi || null,
+      razedini || null,
+      razryadniklar || null,
+      predoxrabiteli10 || null,
+      predoxrabiteli4 || null,
+      proxodny || null,
+      oporny || null,
+      shina || null,
+      rubilniklar || null,
+      vyvody || null,
+      fiderlar_soni || 0,
+      toka || null,
+      tip || null,
+      schotId || null,
+      istemolchi_jami || 0,
+      axoli || 0,
+      ulgurji || 0,
+      mukammal_tp || null,
+      mukammal_xl || null,
+      mukammal_km || null,
+      joriy_tp || null,
+      joriy_xl || null,
+      joriy_km || null,
+      yuklama || null,
+      lat,
+      lng,
+      hisob || "tet",
+      imageFiles, // Eng oxirgi 42-ustun
     ];
 
     const [result] = await db.query(sql, values);
@@ -153,13 +219,12 @@ app.post("/api/transformator", upload.array('images'), async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Transformator va rasmlar muvaffaqiyatli saqlandi!",
-      id: result.insertId
+      id: result.insertId,
     });
-
   } catch (err) {
     console.error("Backend Error:", err);
     res.status(500).json({
-      error: "Bazaga saqlashda server xatoligi: " + err.message
+      error: "Bazaga saqlashda server xatoligi: " + err.message,
     });
   }
 });
@@ -167,7 +232,9 @@ app.post("/api/transformator", upload.array('images'), async (req, res) => {
 // Barcha nimstansiyalarni olish (quvvat bilan birga)
 app.get("/api/nimstansiya/all", async (req, res) => {
   // quvvat ustunini ham qo'shdik
-  const [rows] = await db.query("SELECT id, parentId, name, quvvat FROM nimstansiya");
+  const [rows] = await db.query(
+    "SELECT id, parentId, name, quvvat FROM nimstansiya",
+  );
   res.json(rows);
 });
 
@@ -292,7 +359,6 @@ app.get("/api/nimstansiya/:uId", async (req, res) => {
 
     const [rows] = await db.query(query, [uId]);
     res.json(rows);
-
   } catch (err) {
     console.error("SQL Xatolik:", err);
     res.status(500).json({ error: err.message });
@@ -379,15 +445,47 @@ app.delete("/api/transformator/:id", async (req, res) => {
   }
 });
 
-
-
-
-app.put("/api/transformator/:id", async (req, res) => {
+// PUT so'roviga ham upload.array qo'shish shart!
+app.put("/api/transformator/:id", upload.array("images"), async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
 
-    // Dinamik SQL query yaratish (barcha 41 ta maydon uchun)
+    // 1. Bazadagi joriy (eski) rasmlarni olish
+    const [oldRows] = await db.query(
+      "SELECT images FROM transformator WHERE id = ?",
+      [id],
+    );
+    const dbImagesString = oldRows[0]?.images || "";
+    const dbImagesArray = dbImagesString
+      .split(",")
+      .filter((img) => img.trim() !== "");
+
+    // 2. Frontenddan kelgan (saqlab qolingan) rasmlar
+    const keptImages = data.existing_images
+      ? data.existing_images.split(",").filter((img) => img.trim() !== "")
+      : [];
+
+    // 3. Jismoniy o'chirish: Bazada bor, lekin keptImages ichida yo'q bo'lsa - o'chiramiz
+    const imagesToDelete = dbImagesArray.filter(
+      (img) => !keptImages.includes(img),
+    );
+
+    imagesToDelete.forEach((imgName) => {
+      const filePath = path.join(__dirname, "public/uploads", imgName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Fayl o'chirildi: ${imgName}`);
+      }
+    });
+
+    // 4. Yangi yuklangan fayllar nomini olamiz
+    const newFiles = req.files ? req.files.map((f) => f.filename) : [];
+
+    // 5. Yakuniy rasm stringini yasaymiz
+    const finalImages = [...keptImages, ...newFiles].join(",");
+
+    // 6. SQL Update
     const sql = `
       UPDATE transformator SET 
         parentId=?, tp_raqami=?, inventar_raqami=?, mahalla=?, kocha_nomi=?, 
@@ -397,31 +495,69 @@ app.put("/api/transformator/:id", async (req, res) => {
         predoxrabiteli10=?, predoxrabiteli4=?, proxodny=?, oporny=?, shina=?, 
         rubilniklar=?, vyvody=?, fiderlar_soni=?, toka=?, tip=?, schotId=?, 
         istemolchi_jami=?, axoli=?, ulgurji=?, mukammal_tp=?, mukammal_xl=?, 
-        mukammal_km=?, joriy_tp=?, joriy_xl=?, joriy_km=?, yuklama=?, lat=?, lng=?, hisob=?
+        mukammal_km=?, joriy_tp=?, joriy_xl=?, joriy_km=?, yuklama=?, lat=?, lng=?, hisob=?,
+        images=? 
       WHERE id = ?`;
 
     const values = [
-      data.parentId, data.tp_raqami, data.inventar_raqami, data.mahalla, data.kocha_nomi,
-      data.quvvat, data.fider, data.kuchlanishi, data.tp_turi, data.ishga_tushgan_sana,
-      data.zavod_raqami, data.ishlab_chiqarilgan_zavod, data.ishlab_chiqarilgan_yili,
-      data.qurilish_tashkiloti, data.trans_ornatilishi, data.razedini, data.razryadniklar,
-      data.predoxrabiteli10, data.predoxrabiteli4, data.proxodny, data.oporny, data.shina,
-      data.rubilniklar, data.vyvody, data.fiderlar_soni, data.toka, data.tip, data.schotId,
-      data.istemolchi_jami, data.axoli, data.ulgurji, data.mukammal_tp, data.mukammal_xl,
-      data.mukammal_km, data.joriy_tp, data.joriy_xl, data.joriy_km, data.yuklama,
-      data.lat, data.lng, data.hisob,
-      id // WHERE sharti uchun
+      data.parentId,
+      data.tp_raqami,
+      data.inventar_raqami || null,
+      data.mahalla || null,
+      data.kocha_nomi || null,
+      data.quvvat || null,
+      data.fider || null,
+      data.kuchlanishi || null,
+      data.tp_turi || null,
+      data.ishga_tushgan_sana || null,
+      data.zavod_raqami || null,
+      data.ishlab_chiqarilgan_zavod || null,
+      data.ishlab_chiqarilgan_yili || null,
+      data.qurilish_tashkiloti || null,
+      data.trans_ornatilishi || null,
+      data.razedini || null,
+      data.razryadniklar || null,
+      data.predoxrabiteli10 || null,
+      data.predoxrabiteli4 || null,
+      data.proxodny || null,
+      data.oporny || null,
+      data.shina || null,
+      data.rubilniklar || null,
+      data.vyvody || null,
+      data.fiderlar_soni || 0,
+      data.toka || null,
+      data.tip || null,
+      data.schotId || null,
+      data.istemolchi_jami || 0,
+      data.axoli || 0,
+      data.ulgurji || 0,
+      data.mukammal_tp || null,
+      data.mukammal_xl || null,
+      data.mukammal_km || null,
+      data.joriy_tp || null,
+      data.joriy_xl || null,
+      data.joriy_km || null,
+      data.yuklama || null,
+      data.lat,
+      data.lng,
+      data.hisob,
+      finalImages,
+      id,
     ];
 
     await db.query(sql, values);
-    res.json({ success: true, message: "Ma'lumotlar yangilandi!" });
+    res.json({
+      success: true,
+      message: "Yangilandi va ortiqcha rasmlar o'chirildi!",
+    });
   } catch (err) {
+    console.error("Update xatoligi:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Ustachilikni tahrirlash
-app.put('/api/ustachilik/:id', async (req, res) => {
+app.put("/api/ustachilik/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { name, usta } = req.body;
@@ -434,12 +570,13 @@ app.put('/api/ustachilik/:id', async (req, res) => {
 });
 
 // Nimstansiyani tahrirlash
-app.put('/api/nimstansiya/:id', async (req, res) => {
+app.put("/api/nimstansiya/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { name, parentId, quvvat, turi, hisob } = req.body;
     // DIQQAT: parentId bazada ustachilik_id bo'lishi mumkin
-    const sql = "UPDATE nimstansiya SET name=?, parentId=?, quvvat=?, turi=?, hisob=? WHERE id=?";
+    const sql =
+      "UPDATE nimstansiya SET name=?, parentId=?, quvvat=?, turi=?, hisob=? WHERE id=?";
     await db.query(sql, [name, parentId, quvvat, turi, hisob, id]);
     res.json({ success: true, message: "Nimstansiya yangilandi" });
   } catch (err) {
@@ -448,11 +585,12 @@ app.put('/api/nimstansiya/:id', async (req, res) => {
 });
 
 // Liniyani tahrirlash
-app.put('/api/liniya/:id', async (req, res) => {
+app.put("/api/liniya/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { name, parentId, uzunlik, turi, hisob } = req.body;
-    const sql = "UPDATE liniya SET name=?, parentId=?, uzunlik=?, turi=?, hisob=? WHERE id=?";
+    const sql =
+      "UPDATE liniya SET name=?, parentId=?, uzunlik=?, turi=?, hisob=? WHERE id=?";
     await db.query(sql, [name, parentId, uzunlik, turi, hisob, id]);
     res.json({ success: true, message: "Liniya yangilandi" });
   } catch (err) {

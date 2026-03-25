@@ -155,7 +155,7 @@ export const CATEGORIES = [
 export const StationContext = createContext(null);
 
 export function StationProvider({ children }) {
-  const [stations, setStations]               = useState(INITIAL_STATIONS);
+  const [stations, setStations]               = useState([]);
   const [selected, setSelected]               = useState(null);
   const [sidebarOpen, setSidebarOpen]         = useState(true);
   const [view, setView]                       = useState("dashboard"); // "map" | "admin"
@@ -168,7 +168,7 @@ export function StationProvider({ children }) {
   return (
     <StationContext.Provider
       value={{
-        stations, selected, setSelected,
+        stations,setStations, selected, setSelected,
         sidebarOpen, setSidebarOpen,
         view, setView,
         expandedCategories, toggleCategory,
