@@ -43,6 +43,7 @@ const db = await mysql.createPool({
   user: "root",
   password: "",
   database: "sohiba_edu",
+  charset: "utf8mb4",
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -78,17 +79,76 @@ app.post("/api/nimstansiya", async (req, res) => {
   }
 });
 
-// 3. Liniya (To'g'rilangan: hisob qo'shildi)
 app.post("/api/liniya", async (req, res) => {
   try {
-    const { parentId, name, uzunlik, turi, hisob } = req.body;
+    const {
+      parentId,
+      hisob,
+      inventar_raqami,
+      fider,
+      kuchlanishi,
+      jami_uzunligi,
+      jami_izolyator,
+      jami_travers,
+      simlar,
+      izolyatorlar,
+      traverslar,
+      tb_oddiy,
+      tb_bir_tirgakli,
+      tb_ikki_tirgakli,
+      yg_oddiy,
+      yg_bir_tirgakli,
+      yg_ikki_tirgakli,
+    } = req.body;
+
+    const toInt = (val) => {
+      const parsed = parseInt(val);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    // name = fider + kuchlanishi
+    const name = `${fider || ""} ${kuchlanishi || ""}`.trim();
+
+    const values = [
+      parentId,
+      hisob,
+      name,                              // "Янги Ўзбекистон 10/0,4 кВ"
+      inventar_raqami,
+      fider,
+      kuchlanishi,
+      parseFloat(jami_uzunligi) || 0,
+      jami_izolyator || 0,
+      jami_travers || 0,
+      JSON.stringify(simlar),
+      JSON.stringify(izolyatorlar),
+      JSON.stringify(traverslar),
+      toInt(tb_oddiy),
+      toInt(tb_bir_tirgakli),
+      toInt(tb_ikki_tirgakli),
+      toInt(yg_oddiy),
+      toInt(yg_bir_tirgakli),
+      toInt(yg_ikki_tirgakli),
+    ];
+
     await db.query(
-      "INSERT INTO liniya (parentId, name, uzunlik, turi, hisob) VALUES (?, ?, ?, ?, ?)",
-      [parentId, name, uzunlik, turi, hisob],
+      `INSERT INTO liniya (
+        parentId, hisob, name, inventar_raqami, fider, kuchlanishi,
+        jami_uzunligi, jami_izolyator, jami_travers,
+        simlar, izolyatorlar, traverslar,
+        tb_oddiy, tb_bir_tirgakli, tb_ikki_tirgakli,
+        yg_oddiy, yg_bir_tirgakli, yg_ikki_tirgakli
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      values
     );
-    res.status(201).json({ message: "Liniya qo'shildi" });
+
+    res.status(201).json({ message: "Liniya muvaffaqiyatli qo'shildi" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("SQL XATO:", err.message);
+    console.error("SQL:", err.sql);
+    res.status(500).json({
+      error: err.message,
+      sql: err.sql,
+    });
   }
 });
 
@@ -276,17 +336,14 @@ app.get("/api/ustachilik", async (req, res) => {
     const query = `
     SELECT 
         u.*, 
-        -- Nimstansiyalar (Soni) - DISTINCT id orqali faqat noyoblarini sanaymiz
         COUNT(DISTINCT n.id) as n_jami,
         COUNT(DISTINCT CASE WHEN n.hisob = 'tet' THEN n.id END) as n_tet,
         COUNT(DISTINCT CASE WHEN n.hisob = 'istemol' THEN n.id END) as n_istemol,
         
-        -- Liniyalar (Uzunligi km) - SUM ishlatganda takrorlanishni oldini olish
-        ROUND(SUM(DISTINCT CASE WHEN l.id IS NOT NULL THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 1) as l_jami,
-        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'tet' THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 1) as l_tet,
-        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'istemol' THEN CAST(l.uzunlik AS DECIMAL(10,2)) ELSE 0 END), 1) as l_istemol,
+        ROUND(SUM(DISTINCT CASE WHEN l.id IS NOT NULL THEN CAST(l.jami_uzunligi AS DECIMAL(10,2)) ELSE 0 END), 1) as l_jami,
+        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'tet' THEN CAST(l.jami_uzunligi AS DECIMAL(10,2)) ELSE 0 END), 1) as l_tet,
+        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'istemol' THEN CAST(l.jami_uzunligi AS DECIMAL(10,2)) ELSE 0 END), 1) as l_istemol,
         
-        -- Transformatorlar (Soni)
         COUNT(DISTINCT t.id) as t_jami,
         COUNT(DISTINCT CASE WHEN t.hisob = 'tet' THEN t.id END) as t_tet,
         COUNT(DISTINCT CASE WHEN t.hisob = 'istemol' THEN t.id END) as t_istemol
@@ -296,10 +353,11 @@ app.get("/api/ustachilik", async (req, res) => {
     LEFT JOIN liniya l ON n.id = l.parentId
     LEFT JOIN transformator t ON l.id = t.parentId
     GROUP BY u.id
-`;
+    `;
     const [rows] = await db.query(query);
     res.json(rows);
   } catch (err) {
+    console.error("USTACHILIK XATO:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -327,23 +385,17 @@ app.get("/api/nimstansiya/:uId", async (req, res) => {
       SELECT 
         n.*,
 
-        -- LINIYALAR SONI (O'zgarishsiz qoladi)
         (SELECT COUNT(*) FROM liniya WHERE parentId = n.id) AS liniya_jami,
 
-        -- LINIYALAR UZUNLIGI (HISOBLAR BO'YICHA)
-        -- 1. Jami uzunlik
-        (SELECT ROUND(SUM(CAST(uzunlik AS DECIMAL(10,2))), 2) 
+        (SELECT ROUND(SUM(jami_uzunligi), 2) 
          FROM liniya WHERE parentId = n.id) AS jami_uzunlik,
 
-        -- 2. TET hisobidagi liniyalar uzunligi
-        (SELECT ROUND(SUM(CAST(uzunlik AS DECIMAL(10,2))), 2) 
+        (SELECT ROUND(SUM(jami_uzunligi), 2) 
          FROM liniya WHERE parentId = n.id AND hisob = 'tet') AS uzunlik_tet,
 
-        -- 3. Iste'molchi hisobidagi liniyalar uzunligi
-        (SELECT ROUND(SUM(CAST(uzunlik AS DECIMAL(10,2))), 2) 
+        (SELECT ROUND(SUM(jami_uzunligi), 2) 
          FROM liniya WHERE parentId = n.id AND hisob = 'istemol') AS uzunlik_istemol,
 
-        -- TRANSFORMATORLAR STATISTIKASI (Liniyalar orqali)
         (SELECT COUNT(*) FROM transformator 
          WHERE parentId IN (SELECT id FROM liniya WHERE parentId = n.id)) AS trans_jami,
         
@@ -360,7 +412,7 @@ app.get("/api/nimstansiya/:uId", async (req, res) => {
     const [rows] = await db.query(query, [uId]);
     res.json(rows);
   } catch (err) {
-    console.error("SQL Xatolik:", err);
+    console.error("SQL Xatolik:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

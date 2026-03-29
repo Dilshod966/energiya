@@ -90,7 +90,7 @@ function Dashboard() {
       id: 3,
       title: "HL-10 KV UZUNLIK",
       // Liniyalar uzunligi yig'indisini hisoblash
-      value: data.liniya.reduce((sum, item) => sum + Number(item.uzunlik || 0), 0).toFixed(1),
+      value: data.liniya.reduce((sum, item) => sum + Number(item.jami_uzunligi || 0), 0).toFixed(1),
       sub: "km • jami magistral",
       icon: <Radio size={24} />,
       bg: "bg-[#1e293b]", 

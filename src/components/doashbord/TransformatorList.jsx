@@ -3,11 +3,13 @@ import { getTransformatorlar } from "../../services/api";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { MapPin } from "lucide-react";
+import TransformatorViewModal from "./view/Transformatorviewmodal";
+
 export default function TransformatorList() {
   const { lId } = useParams();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [viewData, setViewData] = useState(null);
   useEffect(() => {
     setLoading(true);
     getTransformatorlar(lId)
@@ -67,8 +69,9 @@ export default function TransformatorList() {
         {data.map((item) => (
           <motion.tr
             key={item.id}
+            onClick={() => setViewData(item)}
             variants={rowVariants}
-            className="border-b transition-all duration-200 hover:bg-slate-700/30 border-slate-800/50"
+            className="cursor-pointer border-b transition-all duration-200 hover:bg-slate-700/30 border-slate-800/50"
           >
             <td className="px-6 py-4 text-white font-medium">
               TP {item.tp_raqami}
@@ -107,6 +110,11 @@ export default function TransformatorList() {
             </td>
           </motion.tr>
         ))}
+        <TransformatorViewModal
+          isOpen={!!viewData}
+          onClose={() => setViewData(null)}
+          data={viewData}
+        />
       </motion.tbody>
     </motion.table>
   );

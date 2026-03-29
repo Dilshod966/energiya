@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { getLiniyalar, getNimstansiyalar, API } from "../../services/api";
+import { getLiniyalar, getNimstansiyalar, API } from "../../../services/api";
 // Xarita komponentini import qilamiz
-import MapSection from "../map/MapSection";
+import MapSection from "../../map/MapSection";
 import { AlertCircle, ArrowDown, X, Upload } from "lucide-react";
 
 export default function AddTransformator({
