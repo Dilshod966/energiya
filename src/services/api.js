@@ -9,3 +9,4 @@ export const getUstachilik = () => API.get('/ustachilik');
 export const getNimstansiyalar = (uId) => API.get(`/nimstansiya/${uId}`);
 export const getLiniyalar = (nId) => API.get(`/liniya/${nId}`);
 export const getTransformatorlar = (lId) => API.get(`/transformator/${lId}`);
+export const getIshlar = () => API.get('/ish');

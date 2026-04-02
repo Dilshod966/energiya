@@ -1,15 +1,18 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Plus,
   Zap,
   Radio,
-  AlertCircle,
   Database,
   Lock,
-  User,
   LogOut,
+  Wrench,
+  Pencil,
+  Trash2,
+  FileSpreadsheet,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import "leaflet/dist/leaflet.css";
 import { useStation } from "../../context/StationContext";
 
@@ -18,6 +21,7 @@ import UstaModal from "./AddContent/UstaModal";
 import NimstansiyaModal from "./AddContent/NimstansiyaModal";
 import LiniyaModal from "./AddContent/LiniyaModal";
 import AddTransformator from "./AddContent/AddTransformator";
+import QilinganIshlarModal from "./AddContent/QilinganIshlarModal";
 
 import {
   getUstachilik,
@@ -35,6 +39,8 @@ export default function AddStationForm() {
   const [editData, setEditData] = useState(null);
   const [stations, setStations] = useState([]);
 
+  const [ishlar, setIshlar] = useState([]);
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState("");
@@ -45,6 +51,7 @@ export default function AddStationForm() {
     { id: "nimstansiya", label: "Nimstansiya", icon: Zap },
     { id: "liniya", label: "Liniya", icon: Radio },
     { id: "transformator", label: "Transformator", icon: Database },
+    { id: "qilinganishlar", label: "Qilingan Ishlar", icon: Wrench },
   ];
 
   const tabTitles = {
@@ -52,11 +59,18 @@ export default function AddStationForm() {
     nimstansiya: "Nimstansiyalar va PS nazorati",
     liniya: "Havo va kabel liniyalari ro'yxati",
     transformator: "Transformator punktlari (TP/SXP)",
+    qilinganishlar: "Qilingan Ishlar ro'yxati",
   };
 
   // --- LOGIC ---
   const loadCurrentTabData = async () => {
     try {
+      if (activeTab === "qilinganishlar") {
+        const r = await fetch("http://localhost:5000/api/ish");
+        const data = await r.json();
+        setIshlar(Array.isArray(data) ? data : []);
+        return;
+      }
       let res;
       if (activeTab === "ustachilik") res = await getUstachilik();
       else if (activeTab === "nimstansiya")
@@ -69,6 +83,44 @@ export default function AddStationForm() {
     } catch (err) {
       console.error(`Xatolik (${activeTab}):`, err);
     }
+  };
+
+  const handleDeleteIsh = async (id) => {
+    if (!window.confirm("Ushbu ishni o'chirishga aminmisiz?")) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/ish/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) setIshlar((prev) => prev.filter((i) => i.id !== id));
+    } catch (err) {
+      console.error("Delete ish error:", err);
+    }
+  };
+
+  const handleIshlarExcel = () => {
+    const data = ishlar.map((i) => ({
+      "ID": i.id,
+      "Tur": i.tur,
+      "Ob'ekt nomi": i.ob_nomi,
+      "Ism": i.ism,
+      "Familiya": i.familiya,
+      "Ish kuni": String(i.ish_kun || "").split("T")[0],
+      "Soat": String(i.ish_soat || "").slice(0, 5),
+      "Ish matni": i.ish_matni,
+      "Qo'shilgan vaqt": i.created_at,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Qilingan Ishlar");
+    XLSX.writeFile(wb, "qilingan_ishlar.xlsx");
+  };
+
+  const formatIshDate = (d) => {
+    if (!d) return "";
+    const s = String(d).split("T")[0];
+    const parts = s.split("-");
+    if (parts.length !== 3) return s;
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
   };
 
   useEffect(() => {
@@ -125,6 +177,8 @@ export default function AddStationForm() {
         return <LiniyaModal {...commonProps} />;
       case "transformator":
         return <AddTransformator {...commonProps} activeTab={activeTab} />;
+      case "qilinganishlar":
+        return <QilinganIshlarModal {...commonProps} />;
       default:
         return null;
     }
@@ -234,121 +288,214 @@ export default function AddStationForm() {
               Boshqaruv paneli orqali ma'lumotlarni qo'shish va tahrirlash.
             </p>
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl text-[13px] font-bold shadow-xl shadow-blue-600/20 active:scale-95 transition-all"
-          >
-            <Plus size={18} /> Qo'shish
-          </button>
+          <div className="flex gap-3">
+            {activeTab === "qilinganishlar" && (
+              <button
+                onClick={handleIshlarExcel}
+                className="flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20 px-5 py-3 rounded-2xl text-[13px] font-bold active:scale-95 transition-all"
+              >
+                <FileSpreadsheet size={16} /> Excel
+              </button>
+            )}
+            <button
+              onClick={() => handleOpenModal()}
+              className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl text-[13px] font-bold shadow-xl active:scale-95 transition-all ${
+                activeTab === "qilinganishlar"
+                  ? "bg-violet-600 hover:bg-violet-500 shadow-violet-600/20"
+                  : "bg-blue-600 hover:bg-blue-500 shadow-blue-600/20"
+              }`}
+            >
+              <Plus size={18} /> Qo'shish
+            </button>
+          </div>
         </div>
 
-        {/* JADVAL */}
-        <div className="bg-[#1e293b]/20 rounded-xl border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-widest text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
-                {activeTab === "ustachilik" && (
-                  <>
-                    <th className="px-8 py-5">Bo'lim Nomi</th>
-                    <th className="px-8 py-5">Usta</th>
-                  </>
-                )}
-                {activeTab === "nimstansiya" && (
-                  <>
-                    <th className="px-8 py-5">Nomi</th>
-                    <th className="px-8 py-5 text-center">Quvvati (kVa)</th>
-                  </>
-                )}
-                {activeTab === "liniya" && (
-                  <>
-                    <th className="px-8 py-5">Nomi</th>
-                    <th className="px-8 py-5 text-center">Jami Uzunlik (km)</th>
-                    <th className="px-8 py-5 text-center">Tegishli PS</th>
-                  </>
-                )}
-                {activeTab === "transformator" && (
-                  <>
-                    <th className="px-8 py-5">TP Raqami</th>
-                    <th className="px-8 py-5 text-center">Quvvat</th>
-                    <th className="px-8 py-5 text-center">Liniya</th>
-                  </>
-                )}
-                <th className="px-8 py-5 text-right">Amallar</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {stations.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-white/[0.03] transition-colors group"
-                >
+        {/* JADVAL yoki CHAT KO'RINISH */}
+        {activeTab === "qilinganishlar" ? (
+          <div className="space-y-3">
+            {ishlar.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-slate-600">
+                <Wrench size={40} className="mb-4 opacity-30" />
+                <p className="text-sm">Hech qanday ish qayd etilmagan</p>
+              </div>
+            ) : (
+              ishlar.map((ish) => {
+                const isLiniya = ish.tur === "liniya";
+                return (
+                  <div
+                    key={ish.id}
+                    className="group relative flex gap-0 rounded-2xl bg-[#0f1829] border border-white/5 hover:border-white/10 overflow-hidden transition-all duration-200"
+                  >
+                    {/* Left color stripe */}
+                    <div
+                      className={`w-1 flex-shrink-0 ${
+                        isLiniya ? "bg-amber-500" : "bg-blue-500"
+                      }`}
+                    />
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 px-5 py-4">
+                      {/* Top: badge + object name */}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span
+                          className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0 ${
+                            isLiniya
+                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                              : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                          }`}
+                        >
+                          {isLiniya ? "Liniya" : "Transformator"}
+                        </span>
+                        <span className="text-white font-bold text-[13px] truncate">
+                          {ish.ob_nomi}
+                        </span>
+                      </div>
+                      {/* Worker */}
+                      <p className="text-violet-400 text-[12px] font-semibold mb-2">
+                        {ish.ism} {ish.familiya}
+                      </p>
+                      {/* Ish matni */}
+                      <p className="text-slate-300 text-[13px] leading-relaxed whitespace-pre-wrap">
+                        {ish.ish_matni}
+                      </p>
+                      {/* Date + time */}
+                      <div className="flex items-center gap-2 mt-3">
+                        <span className="text-[10px] text-slate-500 font-mono bg-white/5 px-2 py-0.5 rounded-md">
+                          {formatIshDate(ish.ish_kun)}
+                        </span>
+                        <span className="text-[10px] text-slate-600">•</span>
+                        <span className="text-[10px] text-slate-500 font-mono bg-white/5 px-2 py-0.5 rounded-md">
+                          {String(ish.ish_soat || "").slice(0, 5)}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Hover actions */}
+                    <div className="absolute right-4 top-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <button
+                        onClick={() => handleOpenModal(ish)}
+                        className="w-7 h-7 flex items-center justify-center bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteIsh(ish.id)}
+                        className="w-7 h-7 flex items-center justify-center bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <div className="bg-[#1e293b]/20 rounded-xl border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-widest text-slate-500 bg-[#0f172a]/80 border-b border-white/5">
                   {activeTab === "ustachilik" && (
                     <>
-                      <td className="px-8 py-5 text-white font-bold text-sm">
-                        {row.name}
-                      </td>
-                      <td className="px-8 py-5 text-slate-400 text-sm">
-                        {row.usta || "-"}
-                      </td>
+                      <th className="px-8 py-5">Bo'lim Nomi</th>
+                      <th className="px-8 py-5">Usta</th>
                     </>
                   )}
                   {activeTab === "nimstansiya" && (
                     <>
-                      <td className="px-8 py-5 text-white font-bold text-sm">
-                        {row.name}
-                      </td>
-                      <td className="px-8 py-5 text-center italic font-mono text-xs text-blue-400">
-                        {row.quvvat} kVa
-                      </td>
+                      <th className="px-8 py-5">Nomi</th>
+                      <th className="px-8 py-5 text-center">Quvvati (kVa)</th>
                     </>
                   )}
                   {activeTab === "liniya" && (
                     <>
-                      <td className="px-8 py-5 text-white font-bold text-sm">
-                        {row.name}
-                      </td>
-                      <td className="px-8 py-5 text-center text-amber-400 font-mono font-bold text-sm">
-                        {row.jami_uzunligi} km
-                      </td>
-                      <td className="px-8 py-5 text-center text-slate-500 text-sm italic">
-                        {row.parentName || "Birikmagan"}
-                      </td>
+                      <th className="px-8 py-5">Nomi</th>
+                      <th className="px-8 py-5 text-center">Jami Uzunlik (km)</th>
+                      <th className="px-8 py-5 text-center">Tegishli PS</th>
                     </>
                   )}
                   {activeTab === "transformator" && (
                     <>
-                      <td className="px-8 py-5 text-white font-bold text-sm">
-                        {row.tp_raqami}
-                      </td>
-                      <td className="px-8 py-5 text-center text-blue-400 font-mono font-bold text-sm">
-                        {row.quvvat}
-                      </td>
-                      <td className="px-8 py-5 text-center text-slate-500 text-sm italic">
-                        {row.parentName || "Liniya yo'q"}
-                      </td>
+                      <th className="px-8 py-5">TP Raqami</th>
+                      <th className="px-8 py-5 text-center">Quvvat</th>
+                      <th className="px-8 py-5 text-center">Liniya</th>
                     </>
                   )}
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      <button
-                        onClick={() => handleOpenModal(row)}
-                        className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
-                      >
-                        Tahrirlash
-                      </button>
-                      <button
-                        onClick={() => handleDelete(row.id)}
-                        className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
-                      >
-                        O'chirish
-                      </button>
-                    </div>
-                  </td>
+                  <th className="px-8 py-5 text-right">Amallar</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {stations.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-white/[0.03] transition-colors group"
+                  >
+                    {activeTab === "ustachilik" && (
+                      <>
+                        <td className="px-8 py-5 text-white font-bold text-sm">
+                          {row.name}
+                        </td>
+                        <td className="px-8 py-5 text-slate-400 text-sm">
+                          {row.usta || "-"}
+                        </td>
+                      </>
+                    )}
+                    {activeTab === "nimstansiya" && (
+                      <>
+                        <td className="px-8 py-5 text-white font-bold text-sm">
+                          {row.name}
+                        </td>
+                        <td className="px-8 py-5 text-center italic font-mono text-xs text-blue-400">
+                          {row.quvvat} kVa
+                        </td>
+                      </>
+                    )}
+                    {activeTab === "liniya" && (
+                      <>
+                        <td className="px-8 py-5 text-white font-bold text-sm">
+                          {row.name}
+                        </td>
+                        <td className="px-8 py-5 text-center text-amber-400 font-mono font-bold text-sm">
+                          {row.jami_uzunligi} km
+                        </td>
+                        <td className="px-8 py-5 text-center text-slate-500 text-sm italic">
+                          {row.parentName || "Birikmagan"}
+                        </td>
+                      </>
+                    )}
+                    {activeTab === "transformator" && (
+                      <>
+                        <td className="px-8 py-5 text-white font-bold text-sm">
+                          {row.tp_raqami}
+                        </td>
+                        <td className="px-8 py-5 text-center text-blue-400 font-mono font-bold text-sm">
+                          {row.quvvat}
+                        </td>
+                        <td className="px-8 py-5 text-center text-slate-500 text-sm italic">
+                          {row.parentName || "Liniya yo'q"}
+                        </td>
+                      </>
+                    )}
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        <button
+                          onClick={() => handleOpenModal(row)}
+                          className="px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[11px] font-bold border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
+                        >
+                          Tahrirlash
+                        </button>
+                        <button
+                          onClick={() => handleDelete(row.id)}
+                          className="px-4 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-[11px] font-bold border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                        >
+                          O'chirish
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         {/* Dinamik modal bu yerda render qilinadi */}
         {renderActiveModal()}
       </main>

@@ -649,6 +649,78 @@ app.put("/api/liniya/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ============================================================
+// QILINGAN ISHLAR API
+// ============================================================
+
+// GET - Ob'ektga tegishli ishlarni olish (?tur=liniya&ob_id=5)
+app.get("/api/ish/filter", async (req, res) => {
+  try {
+    const { tur, ob_id } = req.query;
+    if (!tur || !ob_id) return res.status(400).json({ error: "tur va ob_id kerak" });
+    const [rows] = await db.query(
+      "SELECT * FROM ish WHERE tur = ? AND ob_id = ? ORDER BY id DESC",
+      [tur, Number(ob_id)]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Barcha ishlarni yangi → eski tartibda olish
+app.get("/api/ish", async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM ish ORDER BY id DESC");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - Yangi ish qo'shish
+app.post("/api/ish", async (req, res) => {
+  try {
+    const { tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni } = req.body;
+    if (!tur || !ob_id || !ism || !familiya || !ish_kun || !ish_soat || !ish_matni) {
+      return res.status(400).json({ error: "Barcha maydonlar to'ldirilishi shart" });
+    }
+    const [result] = await db.query(
+      "INSERT INTO ish (tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni]
+    );
+    res.status(201).json({ message: "Ish qo'shildi", id: result.insertId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - Ishni tahrirlash
+app.put("/api/ish/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni } = req.body;
+    await db.query(
+      "UPDATE ish SET tur=?, ob_id=?, ob_nomi=?, ism=?, familiya=?, ish_kun=?, ish_soat=?, ish_matni=? WHERE id=?",
+      [tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni, id]
+    );
+    res.json({ success: true, message: "Ish yangilandi" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - Ishni o'chirish
+app.delete("/api/ish/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query("DELETE FROM ish WHERE id = ?", [id]);
+    res.json({ message: "Ish muvaffaqiyatli o'chirildi" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(5000, () =>
   console.log("Server 5000-portda MySQL bilan ishga tushdi"),
 );

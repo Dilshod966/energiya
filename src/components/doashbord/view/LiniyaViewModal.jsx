@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -9,10 +9,20 @@ import {
   GitBranch,
   FileSpreadsheet,
   Columns,
+  Wrench,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
+const formatIshDate = (d) => {
+  if (!d) return "";
+  const s = String(d).split("T")[0];
+  const p = s.split("-");
+  return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : s;
+};
+
 export default function LiniyaViewModal({ isOpen, onClose, data }) {
+  const [ishlar, setIshlar] = useState([]);
+
   // ESC tugmasi
   const handleKeyDown = useCallback(
     (e) => {
@@ -31,6 +41,15 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
       document.body.style.overflow = "";
     };
   }, [isOpen, handleKeyDown]);
+
+  // Liniyaga tegishli ishlarni yuklash
+  useEffect(() => {
+    if (!isOpen || !data?.id) return;
+    fetch(`http://localhost:5000/api/ish/filter?tur=liniya&ob_id=${data.id}`)
+      .then((r) => r.json())
+      .then((d) => setIshlar(Array.isArray(d) ? d : []))
+      .catch(() => setIshlar([]));
+  }, [isOpen, data?.id]);
 
   const parseArr = (val, fallback = []) => {
     if (Array.isArray(val)) return val;
@@ -359,6 +378,64 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
                       <Field label="2-tirgakli" value={data.yg_ikki_tirgakli} />
                     </div>
                   </div>
+                </div>
+
+                <div className="h-px bg-slate-800" />
+
+                {/* ── Qilingan Ishlar ────────────────────────────────── */}
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-2">
+                    <Wrench size={12} /> Qilingan Ishlar
+                    {ishlar.length > 0 && (
+                      <span className="ml-1 px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/25 text-[9px] font-black">
+                        {ishlar.length}
+                      </span>
+                    )}
+                  </p>
+
+                  {ishlar.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 rounded-2xl border border-slate-800 border-dashed">
+                      <p className="text-slate-600 text-xs italic">
+                        Bu liniya uchun hech qanday ish qayd etilmagan
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {ishlar.map((ish, idx) => (
+                        <motion.div
+                          key={ish.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                          className="flex gap-0 rounded-2xl bg-slate-800/40 border border-slate-700/40 overflow-hidden hover:border-slate-600/50 transition-all"
+                        >
+                          {/* Amber stripe (liniya rangi) */}
+                          <div className="w-1 flex-shrink-0 bg-amber-500" />
+
+                          <div className="flex-1 px-4 py-3 min-w-0">
+                            {/* Worker */}
+                            <p className="text-violet-400 text-[11px] font-bold mb-1.5">
+                              {ish.ism} {ish.familiya}
+                            </p>
+                            {/* Ish matni */}
+                            <p className="text-slate-300 text-[12px] leading-relaxed whitespace-pre-wrap">
+                              {ish.ish_matni}
+                            </p>
+                            {/* Date + time */}
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-[9px] text-slate-500 font-mono bg-slate-800 px-2 py-0.5 rounded-md">
+                                {formatIshDate(ish.ish_kun)}
+                              </span>
+                              <span className="text-slate-700 text-[9px]">•</span>
+                              <span className="text-[9px] text-slate-500 font-mono bg-slate-800 px-2 py-0.5 rounded-md">
+                                {String(ish.ish_soat || "").slice(0, 5)}
+                              </span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>

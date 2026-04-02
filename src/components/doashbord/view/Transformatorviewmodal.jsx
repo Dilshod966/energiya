@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import {
   X,
   MapPin,
@@ -14,7 +14,16 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
+const formatIshDate = (d) => {
+  if (!d) return "";
+  const s = String(d).split("T")[0];
+  const p = s.split("-");
+  return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : s;
+};
+
 export default function TransformatorViewModal({ isOpen, onClose, data }) {
+  const [ishlar, setIshlar] = useState([]);
+
   // ESC tugmasi va tashqari click
   const handleKeyDown = useCallback(
     (e) => {
@@ -34,73 +43,79 @@ export default function TransformatorViewModal({ isOpen, onClose, data }) {
     };
   }, [isOpen, handleKeyDown]);
 
+  // Transformatorga tegishli ishlarni yuklash
+  useEffect(() => {
+    if (!isOpen || !data?.id) return;
+    fetch(`http://localhost:5000/api/ish/filter?tur=transformator&ob_id=${data.id}`)
+      .then((r) => r.json())
+      .then((d) => setIshlar(Array.isArray(d) ? d : []))
+      .catch(() => setIshlar([]));
+  }, [isOpen, data?.id]);
+
   const handleExport = () => {
     if (!data) return;
 
-    const rows = [
-      ["TRANSFORMATOR MA'LUMOTLARI", ""],
-      ["", ""],
-      ["TP Raqami", data.tp_raqami],
-      ["Inventar raqami", data.inventar_raqami],
-      ["Mahalla", data.mahalla],
-      ["Ko'cha nomi", data.kocha_nomi],
-      ["", ""],
-      ["TEXNIK JIHOZLAR", ""],
-      ["Quvvati (kVA)", data.quvvat],
-      ["Fider", data.fider],
-      ["Kuchlanishi", data.kuchlanishi],
-      ["TP turi", data.tp_turi],
-      ["Ishga tushgan yili", data.ishga_tushgan_sana],
-      ["Zavod raqami", data.zavod_raqami],
-      ["Ishlab chiqarilgan zavod", data.ishlab_chiqarilgan_zavod],
-      ["Ishlab chiqarilgan yili", data.ishlab_chiqarilgan_yili],
-      ["Qurilish tashkiloti", data.qurilish_tashkiloti],
-      ["Trans o'rnatilishi", data.trans_ornatilishi],
-      ["", ""],
-      ["ELEKTR JIHOZLARI", ""],
-      ["Razedini", data.razedini],
-      ["Razryadniklar", data.razryadniklar],
-      ["Predoxraniteli 10kV", data.predoxrabiteli10],
-      ["Predoxraniteli 0.4kV", data.predoxrabiteli4],
-      ["Proxodnye izolyator", data.proxodny],
-      ["Opornye izolyator", data.oporny],
-      ["Shina", data.shina],
-      ["Rubilniklar/Avtomatlar", data.rubilniklar],
-      ["Vyvody", data.vyvody],
-      ["Fiderlar soni", data.fiderlar_soni],
-      ["Toka transformator", data.toka],
-      ["Schotchik tip", data.tip],
-      ["Schotchik №", data.schotId],
-      ["", ""],
-      ["ISTE'MOLCHILAR", ""],
-      ["Jami", data.istemolchi_jami],
-      ["Aholi", data.axoli],
-      ["Ulgurji", data.ulgurji],
-      ["", ""],
-      ["TAMIRLASH", ""],
-      ["Mukammal TP", data.mukammal_tp],
-      ["Mukammal XL", data.mukammal_xl],
-      ["Mukammal km", data.mukammal_km],
-      ["Joriy TP", data.joriy_tp],
-      ["Joriy XL", data.joriy_xl],
-      ["Joriy km", data.joriy_km],
-      ["Yuklama (%)", data.yuklama],
-      ["", ""],
-      ["KOORDINATALAR", ""],
-      ["Latitude", data.lat],
-      ["Longitude", data.lng],
-      ["Hisob", data.hisob],
-    ];
+    const ws = {};
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{ wch: 30 }, { wch: 40 }];
+    const sc = (addr, value) => {
+      ws[addr] = { v: value !== null && value !== undefined ? String(value) : "", t: "s" };
+    };
 
-    // Sarlavhalarni bold qilish
-    ["A1", "A8", "A20", "A35", "A42", "A50"].forEach((cell) => {
-      if (ws[cell]) {
-        ws[cell].s = { font: { bold: true, sz: 12 } };
-      }
+    // Asosiy ma'lumotlar
+    sc("B2", [data.tp_raqami, data.quvvat].filter(Boolean).join("/"));
+    sc("C4", data.fider || "");
+    sc("C5", [data.mahalla, data.kocha_nomi].filter(Boolean).join(" "));
+    sc("C6", data.tp_turi || "");
+    sc("E6", data.zavod_raqami || "");
+    sc("I6", data.ishga_tushgan_sana || "");
+    sc("D7", data.ishlab_chiqarilgan_zavod || "");
+    sc("I7", data.ishlab_chiqarilgan_yili || "");
+    sc("D8", data.qurilish_tashkiloti || "");
+    sc("B9", data.trans_ornatilishi || "");
+
+    // 14-qator — elektr jihozlari
+    sc("B14", data.razedini || "");
+    sc("C14", data.razryadniklar || "");
+    sc(
+      "D14",
+      [data.predoxrabiteli10, data.predoxrabiteli4].filter(Boolean).join("/")
+    );
+    sc("E14", data.proxodny || "");
+    sc("F14", data.oporny || "");
+    sc("G14", data.shina || "");
+    sc("H14", data.toka || "");
+    sc("I14", data.kuchlanishi || "");
+
+    // 19-qator — hisoblagich / rubilnik / vyvody
+    sc("B19", data.rubilniklar || "");
+    sc("E19", data.schotId || "");
+    sc("J19", data.vyvody || "");
+
+    // Qilingan ishlar — 30-qatordan boshlab
+    ishlar.forEach((ish, idx) => {
+      const r = 30 + idx;
+      sc(`B${r}`, formatIshDate(ish.ish_kun));
+      sc(`C${r}`, ish.ish_matni || "");
+      sc(`J${r}`, `${ish.ism || ""} ${ish.familiya || ""}`.trim());
     });
+
+    // Worksheet oraliq
+    const lastRow = ishlar.length > 0 ? 30 + ishlar.length - 1 : 30;
+    ws["!ref"] = `A1:J${lastRow}`;
+
+    // Ustun kengliklari
+    ws["!cols"] = [
+      { wch: 4 },  // A
+      { wch: 22 }, // B
+      { wch: 26 }, // C
+      { wch: 26 }, // D
+      { wch: 18 }, // E
+      { wch: 16 }, // F
+      { wch: 14 }, // G
+      { wch: 14 }, // H
+      { wch: 20 }, // I
+      { wch: 26 }, // J
+    ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Transformator");
@@ -303,6 +318,64 @@ export default function TransformatorViewModal({ isOpen, onClose, data }) {
                   <Field label="Joriy km" value={data.joriy_km} />
                   <Field label="Yuklama (%)" value={data.yuklama} />
                 </Section>
+
+                <div className="h-px bg-slate-800" />
+
+                {/* ── Qilingan Ishlar ────────────────────────────────── */}
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-2">
+                    <Wrench size={13} /> Qilingan Ishlar
+                    {ishlar.length > 0 && (
+                      <span className="ml-1 px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/25 text-[9px] font-black">
+                        {ishlar.length}
+                      </span>
+                    )}
+                  </h4>
+
+                  {ishlar.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 rounded-2xl border border-slate-800 border-dashed">
+                      <p className="text-slate-600 text-xs italic">
+                        Bu transformator uchun hech qanday ish qayd etilmagan
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {ishlar.map((ish, idx) => (
+                        <motion.div
+                          key={ish.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                          className="flex gap-0 rounded-2xl bg-slate-800/40 border border-slate-700/40 overflow-hidden hover:border-slate-600/50 transition-all"
+                        >
+                          {/* Blue stripe (transformator rangi) */}
+                          <div className="w-1 flex-shrink-0 bg-blue-500" />
+
+                          <div className="flex-1 px-4 py-3 min-w-0">
+                            {/* Worker */}
+                            <p className="text-violet-400 text-[11px] font-bold mb-1.5">
+                              {ish.ism} {ish.familiya}
+                            </p>
+                            {/* Ish matni */}
+                            <p className="text-slate-300 text-[12px] leading-relaxed whitespace-pre-wrap">
+                              {ish.ish_matni}
+                            </p>
+                            {/* Date + time */}
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-[9px] text-slate-500 font-mono bg-slate-800 px-2 py-0.5 rounded-md">
+                                {formatIshDate(ish.ish_kun)}
+                              </span>
+                              <span className="text-slate-700 text-[9px]">•</span>
+                              <span className="text-[9px] text-slate-500 font-mono bg-slate-800 px-2 py-0.5 rounded-md">
+                                {String(ish.ish_soat || "").slice(0, 5)}
+                              </span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
               </div>
             </motion.div>

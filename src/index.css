@@ -1,3 +1,90 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════════
+   LIGHT MODE — [data-theme="light"] CSS OVERRIDES
+   Tailwind dark hex class names are overridden here globally
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Page / container backgrounds ─────────────────────────────── */
+[data-theme="light"] .bg-\[\#070d18\]   { background-color: #eef2f7 !important; }
+[data-theme="light"] .bg-\[\#0a0f1a\]   { background-color: #ffffff !important; }
+[data-theme="light"] .bg-\[\#0f1829\]   { background-color: #f1f5f9 !important; }
+[data-theme="light"] .bg-\[\#0f172a\]   { background-color: #f8fafc !important; }
+[data-theme="light"] .bg-\[\#1e293b\]   { background-color: #e2e8f0 !important; }
+
+/* with opacity modifiers */
+[data-theme="light"] .bg-\[\#0f172a\]\/80  { background-color: rgba(248,250,252,0.97) !important; }
+[data-theme="light"] .bg-\[\#1e293b\]\/20  { background-color: rgba(226,232,240,0.5) !important; }
+[data-theme="light"] .bg-\[\#1e293b\]\/30  { background-color: rgba(226,232,240,0.6) !important; }
+
+/* dark utility bg */
+[data-theme="light"] .bg-black\/40  { background-color: rgba(248,250,252,0.95) !important; }
+[data-theme="light"] .bg-black\/70  { background-color: rgba(0,0,0,0.45) !important; }
+
+/* white/opacity backgrounds (subtle elements) */
+[data-theme="light"] .bg-white\/5   { background-color: rgba(15,23,42,0.04) !important; }
+[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(15,23,42,0.02) !important; }
+
+/* ── Borders ───────────────────────────────────────────────────── */
+[data-theme="light"] .border-white\/5   { border-color: rgba(15,23,42,0.09) !important; }
+[data-theme="light"] .border-white\/10  { border-color: rgba(15,23,42,0.13) !important; }
+[data-theme="light"] .border-white\/20  { border-color: rgba(15,23,42,0.18) !important; }
+[data-theme="light"] .ring-1.ring-blue-500\/20 { --tw-ring-color: rgba(59,130,246,0.25) !important; }
+
+/* ── Text colors ───────────────────────────────────────────────── */
+/* Only non-button elements — button text-white stays white on colored bg */
+[data-theme="light"] :not(button):not(a).text-white   { color: #0f172a !important; }
+[data-theme="light"] .text-slate-300  { color: #374151 !important; }
+[data-theme="light"] .text-slate-400  { color: #6b7280 !important; }
+[data-theme="light"] .text-slate-500  { color: #9ca3af !important; }
+
+/* ── Hover states ──────────────────────────────────────────────── */
+[data-theme="light"] .hover\:bg-white\/5:hover           { background-color: rgba(15,23,42,0.05) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.03\]:hover   { background-color: rgba(15,23,42,0.03) !important; }
+
+/* ── Dividers ──────────────────────────────────────────────────── */
+[data-theme="light"] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(15,23,42,0.07) !important;
+}
+
+/* ── Input / textarea text & placeholder ──────────────────────── */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color: #0f172a !important;
+}
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* ── input[type="date"] and input[type="time"] calendar icon ──── */
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.4);
+}
+
+/* ── Shadows (lighten card shadows) ───────────────────────────── */
+[data-theme="light"] .shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(15,23,42,0.12) !important;
+}
+[data-theme="light"] .shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(15,23,42,0.10), 0 8px 10px -6px rgba(15,23,42,0.06) !important;
+}
+
+/* ── Backdrop blur modal overlay ──────────────────────────────── */
+[data-theme="light"] .backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}
+
+/* ── Sidebar active nav item (admin panel) ────────────────────── */
+[data-theme="light"] .bg-blue-600\/10 {
+  background-color: rgba(59,130,246,0.08) !important;
+}
+
+/* ── Table row hover ───────────────────────────────────────────── */
+[data-theme="light"] .hover\:bg-white\/\[0\.03\]:hover {
+  background-color: rgba(15,23,42,0.03) !important;
+}

@@ -161,6 +161,7 @@ export function StationProvider({ children }) {
   const [view, setView]                       = useState("dashboard"); // "map" | "admin"
   const [expandedCategories, setExpandedCategories] = useState({});
   const [usernomi, setusernomi] = useState("User")
+  const [theme, setTheme] = useState(() => localStorage.getItem("app_theme") || "dark")
 
   const addStation    = (s) => setStations((prev) => [...prev, { ...s, id: Date.now() }]);
   const toggleCategory = (id) => setExpandedCategories((p) => ({ ...p, [id]: !p[id] }));
@@ -176,6 +177,8 @@ export function StationProvider({ children }) {
         CATEGORIES,
         usernomi,
         setusernomi,
+        theme,
+        setTheme,
       }}
     >
       {children}
