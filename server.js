@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import ExcelJS from 'exceljs';
 
 // 1. __dirname ni aniqlab olamiz (ES Modullar uchun)
 const __filename = fileURLToPath(import.meta.url);
@@ -718,6 +719,181 @@ app.delete("/api/ish/:id", async (req, res) => {
     res.json({ message: "Ish muvaffaqiyatli o'chirildi" });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// TRANSFORMATOR EXCEL EKSPORT
+// ============================================================
+app.get('/api/export/transformator/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Transformator ma'lumotlarini olish
+    const [tRows] = await db.query('SELECT * FROM transformator WHERE id = ?', [id]);
+    if (!tRows.length) return res.status(404).json({ error: 'Transformator topilmadi' });
+    const t = tRows[0];
+
+    // 2. Qilingan ishlarni olish (eskidan yangiga tartiblangan)
+    const [ishlar] = await db.query(
+      "SELECT * FROM ish WHERE tur = 'transformator' AND ob_id = ? ORDER BY id ASC",
+      [id]
+    );
+
+    // 3. Shablonni yuklash
+    const templatePath = path.join(__dirname, 'public', 'template_tp.xlsx');
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(templatePath);
+
+    // 4. '10942' varaqini olish
+    const ws = wb.getWorksheet('10942');
+    if (!ws) return res.status(500).json({ error: "Shablon varaqi '10942' topilmadi" });
+
+    // Qiymat o'rnatish uchun yordamchi funksiya (formatni saqlab)
+    const setVal = (addr, value) => {
+      ws.getCell(addr).value = value;
+    };
+
+    // 5. Asosiy maydonlarni to'ldirish
+    // A2: bo'sh
+    ws.getCell('A2').value = null;
+
+    // B2: tp_raqami/quvvat (merged B2:K2, faqat B2 ga)
+    const b2Parts = [t.tp_raqami, t.quvvat].filter(Boolean);
+    setVal('B2', b2Parts.length ? b2Parts.join('/') + ' kVA' : '');
+
+    // C4: fider
+    setVal('C4', t.fider || '');
+
+    // C5: mahalla + kocha_nomi (merged C5:K5, faqat C5 ga)
+    setVal('C5', [t.mahalla, t.kocha_nomi].filter(Boolean).join(' '));
+
+    // C6: tp_turi
+    setVal('C6', t.tp_turi || '');
+
+    // E6: zavod_raqami
+    setVal('E6', t.zavod_raqami || '');
+
+    // I6: ishga_tushgan_sana (sana sifatida)
+    if (t.ishga_tushgan_sana) {
+      const d = new Date(t.ishga_tushgan_sana);
+      setVal('I6', isNaN(d.getTime()) ? t.ishga_tushgan_sana : d);
+    } else {
+      setVal('I6', '');
+    }
+
+    // D7: ishlab_chiqarilgan_zavod
+    setVal('D7', t.ishlab_chiqarilgan_zavod || '');
+
+    // I7: ishlab_chiqarilgan_yili
+    setVal('I7', t.ishlab_chiqarilgan_yili || '');
+
+    // B8: qurilish_tashkiloti — shablon satrining oxiriga tashkilot nomini qo'yish
+    if (t.qurilish_tashkiloti) {
+      setVal('B8', `Stroit. Montaj. Organizatsiya  ________${t.qurilish_tashkiloti}_________________________________________________________________`);
+    }
+
+    // B9: trans_ornatilishi (merged B9:K9, faqat B9 ga)
+    setVal('B9', t.trans_ornatilishi || '');
+
+    // 14-qator — yuqori kuchlanish sektsiyasi
+    setVal('B14', t.razedini || '');
+    setVal('C14', t.razryadniklar || '');
+
+    // D14: predoxrabiteli10/predoxrabiteli4
+    const predParts = [t.predoxrabiteli10, t.predoxrabiteli4].filter(Boolean);
+    setVal('D14', predParts.length ? predParts.join('/') : '');
+
+    setVal('E14', t.proxodny || '');
+    setVal('F14', t.oporny || '');
+    setVal('G14', t.shina || '');
+    setVal('H14', t.toka || '');
+    setVal('I14', t.kuchlanishi || '');
+
+    // 19-qator — past kuchlanish sektsiyasi
+    setVal('B19', t.rubilniklar || '');
+    setVal('E19', t.schotId || '');
+
+    // J19: vyvody (merged J19:K19, faqat J19 ga)
+    setVal('J19', t.vyvody || '');
+
+    // 6. 30-qatordan boshlab barcha merge va qatorlarni tozalash
+    //    ws._merges — ichki object, key = top-left hujayra manzili ('C30' kabi)
+    const mergesObj = ws._merges || {};
+    for (const key of Object.keys(mergesObj)) {
+      const rowNum = parseInt(key.replace(/[A-Za-z]/g, ''));
+      if (!isNaN(rowNum) && rowNum >= 30) {
+        delete mergesObj[key];
+      }
+    }
+    // Qatorlarni o'chirish (oxiridan boshlab — indeks siljishini oldini olish)
+    const lastRow = ws.rowCount;
+    for (let r = lastRow; r >= 30; r--) {
+      ws.spliceRows(r, 1);
+    }
+
+    // 7. Faqat ish soni qadar yangi qatorlar qo'shish (har biri borderli)
+    const thin = { style: 'thin' };
+    const bord = { top: thin, left: thin, bottom: thin, right: thin };
+    const fnt  = { name: 'Times New Roman', size: 11 };
+    const alignCC  = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+    ishlar.forEach((ish, idx) => {
+      const r = 30 + idx;
+      ws.getRow(r).height = 40.5;
+
+      // B: sana
+      const cB = ws.getCell(`B${r}`);
+      if (ish.ish_kun) {
+        const d = new Date(ish.ish_kun);
+        cB.value = isNaN(d.getTime()) ? String(ish.ish_kun) : d;
+      } else {
+        cB.value = '';
+      }
+      cB.numFmt = 'DD.MM.YYYY';
+      cB.border = bord;
+      cB.font = fnt;
+      cB.alignment = alignCC;
+
+      // C:I — ish matni (merge)
+      ws.mergeCells(`C${r}:I${r}`);
+      const cC = ws.getCell(`C${r}`);
+      cC.value = ish.ish_matni || '';
+      cC.border = bord;
+      cC.font = fnt;
+      cC.alignment = alignCC;
+      ['D','E','F','G','H','I'].forEach(col => {
+        ws.getCell(`${col}${r}`).border = bord;
+      });
+
+      // J:K — ism familiya (merge)
+      ws.mergeCells(`J${r}:K${r}`);
+      const cJ = ws.getCell(`J${r}`);
+      cJ.value = `${ish.ism || ''} ${ish.familiya || ''}`.trim();
+      cJ.border = bord;
+      cJ.font = fnt;
+      cJ.alignment = alignCC;
+      ws.getCell(`K${r}`).border = bord;
+    });
+
+    // 8. Faqat '10942' varaqini qoldirish va nomini o'zgartirish
+    const sheetsToRemove = wb.worksheets.filter(s => s.name !== '10942');
+    sheetsToRemove.forEach(s => wb.removeWorksheet(s.id));
+    ws.name = 'Pasport';
+
+    // 9. Javob sarlavhalarini o'rnatish
+    const fileName = `TP_${t.tp_raqami || id}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+
+    // 10. Streamga yozish
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Export xatoligi:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Export xatoligi: ' + err.message });
+    }
   }
 });
 

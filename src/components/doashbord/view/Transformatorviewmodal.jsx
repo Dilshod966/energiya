@@ -12,8 +12,6 @@ import {
   ShieldCheck,
   Gauge,
 } from "lucide-react";
-import * as XLSX from "xlsx";
-
 const formatIshDate = (d) => {
   if (!d) return "";
   const s = String(d).split("T")[0];
@@ -52,74 +50,21 @@ export default function TransformatorViewModal({ isOpen, onClose, data }) {
       .catch(() => setIshlar([]));
   }, [isOpen, data?.id]);
 
-  const handleExport = () => {
-    if (!data) return;
-
-    const ws = {};
-
-    const sc = (addr, value) => {
-      ws[addr] = { v: value !== null && value !== undefined ? String(value) : "", t: "s" };
-    };
-
-    // Asosiy ma'lumotlar
-    sc("B2", [data.tp_raqami, data.quvvat].filter(Boolean).join("/"));
-    sc("C4", data.fider || "");
-    sc("C5", [data.mahalla, data.kocha_nomi].filter(Boolean).join(" "));
-    sc("C6", data.tp_turi || "");
-    sc("E6", data.zavod_raqami || "");
-    sc("I6", data.ishga_tushgan_sana || "");
-    sc("D7", data.ishlab_chiqarilgan_zavod || "");
-    sc("I7", data.ishlab_chiqarilgan_yili || "");
-    sc("D8", data.qurilish_tashkiloti || "");
-    sc("B9", data.trans_ornatilishi || "");
-
-    // 14-qator — elektr jihozlari
-    sc("B14", data.razedini || "");
-    sc("C14", data.razryadniklar || "");
-    sc(
-      "D14",
-      [data.predoxrabiteli10, data.predoxrabiteli4].filter(Boolean).join("/")
-    );
-    sc("E14", data.proxodny || "");
-    sc("F14", data.oporny || "");
-    sc("G14", data.shina || "");
-    sc("H14", data.toka || "");
-    sc("I14", data.kuchlanishi || "");
-
-    // 19-qator — hisoblagich / rubilnik / vyvody
-    sc("B19", data.rubilniklar || "");
-    sc("E19", data.schotId || "");
-    sc("J19", data.vyvody || "");
-
-    // Qilingan ishlar — 30-qatordan boshlab
-    ishlar.forEach((ish, idx) => {
-      const r = 30 + idx;
-      sc(`B${r}`, formatIshDate(ish.ish_kun));
-      sc(`C${r}`, ish.ish_matni || "");
-      sc(`J${r}`, `${ish.ism || ""} ${ish.familiya || ""}`.trim());
-    });
-
-    // Worksheet oraliq
-    const lastRow = ishlar.length > 0 ? 30 + ishlar.length - 1 : 30;
-    ws["!ref"] = `A1:J${lastRow}`;
-
-    // Ustun kengliklari
-    ws["!cols"] = [
-      { wch: 4 },  // A
-      { wch: 22 }, // B
-      { wch: 26 }, // C
-      { wch: 26 }, // D
-      { wch: 18 }, // E
-      { wch: 16 }, // F
-      { wch: 14 }, // G
-      { wch: 14 }, // H
-      { wch: 20 }, // I
-      { wch: 26 }, // J
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Transformator");
-    XLSX.writeFile(wb, `TP_${data.tp_raqami || "malumot"}.xlsx`);
+  const handleExport = async () => {
+    if (!data?.id) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/export/transformator/${data.id}`);
+      if (!response.ok) throw new Error('Export failed');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TP_${data.tp_raqami || data.id}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export error:', err);
+    }
   };
 
   if (!data) return null;
