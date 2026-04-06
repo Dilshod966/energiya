@@ -102,9 +102,9 @@ function Dashboard() {
             <p className="text-xs text-slate-400">Yangiariq tuman elektr ta'minoti</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-[#217346] hover:bg-[#1e663e] px-4 py-2 rounded-lg transition text-sm border border-slate-700 active:scale-95">
+        {/* <button className="flex items-center gap-2 bg-[#217346] hover:bg-[#1e663e] px-4 py-2 rounded-lg transition text-sm border border-slate-700 active:scale-95">
           <Download size={18} /> Eksport
-        </button>
+        </button> */}
       </div>
 
       {/* KPI Cards */}
