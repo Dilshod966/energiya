@@ -861,6 +861,26 @@ app.post("/api/ish/:id/tugatish", uploadTugatish.fields([
 app.delete("/api/ish/:id", async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Avval rasmlarni olamiz
+    const [rows] = await db.query(
+      "SELECT farmoyish_rasmlar, ish_rasmlar FROM ish WHERE id = ?", [id]
+    );
+
+    if (rows.length) {
+      const parseImgs = (val) => {
+        try { return val ? JSON.parse(val) : []; } catch { return []; }
+      };
+      const allImgs = [
+        ...parseImgs(rows[0].farmoyish_rasmlar),
+        ...parseImgs(rows[0].ish_rasmlar),
+      ];
+      allImgs.forEach((imgPath) => {
+        const full = path.join(__dirname, "public", imgPath);
+        if (fs.existsSync(full)) fs.unlinkSync(full);
+      });
+    }
+
     await db.query("DELETE FROM ish WHERE id = ?", [id]);
     res.json({ message: "Ish muvaffaqiyatli o'chirildi" });
   } catch (err) {
