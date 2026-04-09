@@ -41,7 +41,7 @@ export default function Sidebar() {
   const counts = {
     total: stations.length,
     tet: stations.filter((s) => s.hisob === "tet").length,
-    ist: stations.filter((s) => s.hisob === "ist").length,
+    ist: stations.filter((s) => s.hisob !== "tet").length,
   };
 
   return (

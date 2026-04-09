@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Zap } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -18,6 +18,7 @@ export default function MapView() {
   
   const [stations, setStations] = useState([]);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const markerRefs = useRef({});
   const [mapType2, setMapType2] = useState("standard");
   const [loading, setLoading] = useState(true);
 
@@ -106,6 +107,7 @@ export default function MapView() {
               key={station.id}
               position={[station.lat, station.lng]}
               icon={makeIcon(markerColor, "active")}
+              ref={(ref) => { markerRefs.current[station.id] = ref; }}
               eventHandlers={{
                 click: () => setSelected(station),
               }}
@@ -150,7 +152,7 @@ export default function MapView() {
           );
         })}
 
-        {selected && <FlyToStation station={selected} />}
+        <FlyToStation station={selected} markerRefs={markerRefs} />
       </MapContainer>
 
       {/* ── Category Legend ── */}

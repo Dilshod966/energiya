@@ -80,76 +80,61 @@ app.post("/api/nimstansiya", async (req, res) => {
   }
 });
 
+// Bolimlardan barcha statistikani hisoblash
+function calcLiniyaStats(bolimArr) {
+  let jami_uzunligi = 0, tet_uzunlik = 0, istemol_uzunlik = 0;
+  let jami_izolyator = 0, jami_travers = 0;
+
+  bolimArr.forEach((b) => {
+    const km = (b.simlar || []).reduce((s, sim) => s + (parseFloat(sim.sim_uzunligi) || 0), 0);
+    jami_uzunligi += km;
+    if (b.hisob === "tet") tet_uzunlik += km;
+    else istemol_uzunlik += km;
+    jami_izolyator += (b.izolyatorlar || []).reduce((s, i) => s + (parseInt(i.soni) || 0), 0);
+    jami_travers   += (b.traverslar   || []).reduce((s, t) => s + (parseInt(t.soni) || 0), 0);
+  });
+
+  const allTet     = bolimArr.length > 0 && bolimArr.every(b => b.hisob === "tet");
+  const allIstemol = bolimArr.length > 0 && bolimArr.every(b => b.hisob === "istemol");
+  const hisob = allTet ? "tet" : allIstemol ? "istemol" : "mixed";
+
+  return {
+    jami_uzunligi: parseFloat(jami_uzunligi.toFixed(2)),
+    tet_uzunlik:   parseFloat(tet_uzunlik.toFixed(2)),
+    istemol_uzunlik: parseFloat(istemol_uzunlik.toFixed(2)),
+    jami_izolyator,
+    jami_travers,
+    hisob,
+  };
+}
+
 app.post("/api/liniya", async (req, res) => {
   try {
-    const {
-      parentId,
-      hisob,
-      inventar_raqami,
-      fider,
-      kuchlanishi,
-      jami_uzunligi,
-      jami_izolyator,
-      jami_travers,
-      simlar,
-      izolyatorlar,
-      traverslar,
-      tb_oddiy,
-      tb_bir_tirgakli,
-      tb_ikki_tirgakli,
-      yg_oddiy,
-      yg_bir_tirgakli,
-      yg_ikki_tirgakli,
-    } = req.body;
-
-    const toInt = (val) => {
-      const parsed = parseInt(val);
-      return isNaN(parsed) ? null : parsed;
-    };
-
-    // name = fider + kuchlanishi
+    const { parentId, inventar_raqami, fider, kuchlanishi, ishga_tushirilgan_yili, bolimlar } = req.body;
+    const bolimArr = Array.isArray(bolimlar) ? bolimlar : [];
     const name = `${fider || ""} ${kuchlanishi || ""}`.trim();
-
-    const values = [
-      parentId,
-      hisob,
-      name,                              // "Янги Ўзбекистон 10/0,4 кВ"
-      inventar_raqami,
-      fider,
-      kuchlanishi,
-      parseFloat(jami_uzunligi) || 0,
-      jami_izolyator || 0,
-      jami_travers || 0,
-      JSON.stringify(simlar),
-      JSON.stringify(izolyatorlar),
-      JSON.stringify(traverslar),
-      toInt(tb_oddiy),
-      toInt(tb_bir_tirgakli),
-      toInt(tb_ikki_tirgakli),
-      toInt(yg_oddiy),
-      toInt(yg_bir_tirgakli),
-      toInt(yg_ikki_tirgakli),
-    ];
+    const stats = calcLiniyaStats(bolimArr);
 
     await db.query(
       `INSERT INTO liniya (
         parentId, hisob, name, inventar_raqami, fider, kuchlanishi,
-        jami_uzunligi, jami_izolyator, jami_travers,
-        simlar, izolyatorlar, traverslar,
-        tb_oddiy, tb_bir_tirgakli, tb_ikki_tirgakli,
-        yg_oddiy, yg_bir_tirgakli, yg_ikki_tirgakli
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      values
+        ishga_tushirilgan_yili,
+        jami_uzunligi, tet_uzunlik, istemol_uzunlik,
+        jami_izolyator, jami_travers, bolimlar
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        parentId, stats.hisob, name, inventar_raqami, fider, kuchlanishi,
+        ishga_tushirilgan_yili || null,
+        stats.jami_uzunligi, stats.tet_uzunlik, stats.istemol_uzunlik,
+        stats.jami_izolyator, stats.jami_travers,
+        JSON.stringify(bolimArr),
+      ]
     );
 
     res.status(201).json({ message: "Liniya muvaffaqiyatli qo'shildi" });
   } catch (err) {
     console.error("SQL XATO:", err.message);
-    console.error("SQL:", err.sql);
-    res.status(500).json({
-      error: err.message,
-      sql: err.sql,
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -290,24 +275,58 @@ app.post("/api/transformator", upload.array("images"), async (req, res) => {
   }
 });
 
-// Barcha nimstansiyalarni olish (quvvat bilan birga)
+// Barcha nimstansiyalarni olish (aggregated stats bilan)
 app.get("/api/nimstansiya/all", async (req, res) => {
-  // quvvat ustunini ham qo'shdik
-  const [rows] = await db.query(
-    "SELECT id, parentId, name, quvvat FROM nimstansiya",
-  );
-  res.json(rows);
+  try {
+    const query = `
+      SELECT
+        n.id, n.parentId, n.name, n.quvvat,
+        u.name AS parentName,
+
+        ROUND(COALESCE((SELECT SUM(jami_uzunligi) FROM liniya WHERE parentId = n.id), 0), 2) AS jami_uzunlik,
+        ROUND(COALESCE((SELECT SUM(tet_uzunlik) FROM liniya WHERE parentId = n.id), 0), 2) AS uzunlik_tet,
+        ROUND(COALESCE((SELECT SUM(istemol_uzunlik) FROM liniya WHERE parentId = n.id), 0), 2) AS uzunlik_istemol,
+
+        COALESCE((SELECT COUNT(*) FROM transformator WHERE parentId IN (SELECT id FROM liniya WHERE parentId = n.id)), 0) AS trans_jami,
+        COALESCE((SELECT COUNT(*) FROM transformator WHERE hisob = 'tet' AND parentId IN (SELECT id FROM liniya WHERE parentId = n.id)), 0) AS trans_tet,
+        COALESCE((SELECT COUNT(*) FROM transformator WHERE hisob = 'istemol' AND parentId IN (SELECT id FROM liniya WHERE parentId = n.id)), 0) AS trans_istemol
+
+      FROM nimstansiya n
+      LEFT JOIN ustachilik u ON n.parentId = u.id
+    `;
+    const [rows] = await db.query(query);
+    res.json(rows);
+  } catch (err) {
+    console.error("NIMSTANSIYA ALL XATO:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// LINIYALAR UCHUN (Nimstansiya nomini qo'shib olish)
+// LINIYALAR UCHUN (transformer stats bilan)
 app.get("/api/liniya/all", async (req, res) => {
-  const query = `
-    SELECT l.*, n.name AS parentName 
-    FROM liniya l
-    LEFT JOIN nimstansiya n ON l.parentId = n.id
-  `;
-  const [rows] = await db.query(query);
-  res.json(rows);
+  try {
+    const query = `
+      SELECT
+        l.*,
+        n.name AS parentName,
+        COUNT(t.id) AS jami_trafo,
+        SUM(CASE WHEN t.hisob = 'tet' THEN 1 ELSE 0 END) AS tet_trafo,
+        SUM(CASE WHEN t.hisob = 'istemol' THEN 1 ELSE 0 END) AS istemol_trafo
+      FROM liniya l
+      LEFT JOIN nimstansiya n ON l.parentId = n.id
+      LEFT JOIN transformator t ON l.id = t.parentId
+      GROUP BY l.id
+    `;
+    const [rows] = await db.query(query);
+    const parsed = rows.map(r => ({
+      ...r,
+      bolimlar: r.bolimlar ? JSON.parse(r.bolimlar) : [],
+    }));
+    res.json(parsed);
+  } catch (err) {
+    console.error("LINIYA ALL XATO:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // TRANSFORMATORLAR UCHUN (Liniya nomini qo'shib olish)
@@ -341,9 +360,9 @@ app.get("/api/ustachilik", async (req, res) => {
         COUNT(DISTINCT CASE WHEN n.hisob = 'tet' THEN n.id END) as n_tet,
         COUNT(DISTINCT CASE WHEN n.hisob = 'istemol' THEN n.id END) as n_istemol,
         
-        ROUND(SUM(DISTINCT CASE WHEN l.id IS NOT NULL THEN CAST(l.jami_uzunligi AS DECIMAL(10,2)) ELSE 0 END), 1) as l_jami,
-        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'tet' THEN CAST(l.jami_uzunligi AS DECIMAL(10,2)) ELSE 0 END), 1) as l_tet,
-        ROUND(SUM(DISTINCT CASE WHEN l.hisob = 'istemol' THEN CAST(l.jami_uzunligi AS DECIMAL(10,2)) ELSE 0 END), 1) as l_istemol,
+        ROUND(COALESCE(SUM(DISTINCT l.jami_uzunligi), 0), 1) as l_jami,
+        ROUND(COALESCE(SUM(DISTINCT l.tet_uzunlik), 0), 1) as l_tet,
+        ROUND(COALESCE(SUM(DISTINCT l.istemol_uzunlik), 0), 1) as l_istemol,
         
         COUNT(DISTINCT t.id) as t_jami,
         COUNT(DISTINCT CASE WHEN t.hisob = 'tet' THEN t.id END) as t_tet,
@@ -388,14 +407,14 @@ app.get("/api/nimstansiya/:uId", async (req, res) => {
 
         (SELECT COUNT(*) FROM liniya WHERE parentId = n.id) AS liniya_jami,
 
-        (SELECT ROUND(SUM(jami_uzunligi), 2) 
+        (SELECT ROUND(SUM(jami_uzunligi), 2)
          FROM liniya WHERE parentId = n.id) AS jami_uzunlik,
 
-        (SELECT ROUND(SUM(jami_uzunligi), 2) 
-         FROM liniya WHERE parentId = n.id AND hisob = 'tet') AS uzunlik_tet,
+        (SELECT ROUND(SUM(tet_uzunlik), 2)
+         FROM liniya WHERE parentId = n.id) AS uzunlik_tet,
 
-        (SELECT ROUND(SUM(jami_uzunligi), 2) 
-         FROM liniya WHERE parentId = n.id AND hisob = 'istemol') AS uzunlik_istemol,
+        (SELECT ROUND(SUM(istemol_uzunlik), 2)
+         FROM liniya WHERE parentId = n.id) AS uzunlik_istemol,
 
         (SELECT COUNT(*) FROM transformator 
          WHERE parentId IN (SELECT id FROM liniya WHERE parentId = n.id)) AS trans_jami,
@@ -422,8 +441,8 @@ app.get("/api/liniya/:nId", async (req, res) => {
   try {
     const { nId } = req.params;
     const query = `
-      SELECT 
-        l.*, 
+      SELECT
+        l.*,
         COUNT(t.id) as jami_trafo,
         SUM(CASE WHEN t.hisob = 'tet' THEN 1 ELSE 0 END) as tet_trafo,
         SUM(CASE WHEN t.hisob = 'istemol' THEN 1 ELSE 0 END) as istemol_trafo
@@ -433,7 +452,11 @@ app.get("/api/liniya/:nId", async (req, res) => {
       GROUP BY l.id
     `;
     const [rows] = await db.query(query, [nId]);
-    res.json(rows);
+    const parsed = rows.map(r => ({
+      ...r,
+      bolimlar: r.bolimlar ? JSON.parse(r.bolimlar) : [],
+    }));
+    res.json(parsed);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -641,12 +664,30 @@ app.put("/api/nimstansiya/:id", async (req, res) => {
 app.put("/api/liniya/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, parentId, uzunlik, turi, hisob } = req.body;
-    const sql =
-      "UPDATE liniya SET name=?, parentId=?, uzunlik=?, turi=?, hisob=? WHERE id=?";
-    await db.query(sql, [name, parentId, uzunlik, turi, hisob, id]);
+    const { parentId, inventar_raqami, fider, kuchlanishi, ishga_tushirilgan_yili, bolimlar } = req.body;
+    const bolimArr = Array.isArray(bolimlar) ? bolimlar : [];
+    const name = `${fider || ""} ${kuchlanishi || ""}`.trim();
+    const stats = calcLiniyaStats(bolimArr);
+
+    await db.query(
+      `UPDATE liniya SET
+        parentId=?, hisob=?, name=?, inventar_raqami=?, fider=?, kuchlanishi=?,
+        ishga_tushirilgan_yili=?,
+        jami_uzunligi=?, tet_uzunlik=?, istemol_uzunlik=?,
+        jami_izolyator=?, jami_travers=?, bolimlar=?
+       WHERE id=?`,
+      [
+        parentId, stats.hisob, name, inventar_raqami, fider, kuchlanishi,
+        ishga_tushirilgan_yili || null,
+        stats.jami_uzunligi, stats.tet_uzunlik, stats.istemol_uzunlik,
+        stats.jami_izolyator, stats.jami_travers,
+        JSON.stringify(bolimArr),
+        id,
+      ]
+    );
     res.json({ success: true, message: "Liniya yangilandi" });
   } catch (err) {
+    console.error("Liniya update xato:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -896,6 +937,11 @@ app.get('/api/export/transformator/:id', async (req, res) => {
     }
   }
 });
+
+// Yangi ustunlarni avtomatik qo'shish
+db.query(`ALTER TABLE liniya ADD COLUMN IF NOT EXISTS bolimlar LONGTEXT DEFAULT NULL`).catch(() => {});
+db.query(`ALTER TABLE liniya ADD COLUMN IF NOT EXISTS tet_uzunlik DECIMAL(10,2) DEFAULT 0`).catch(() => {});
+db.query(`ALTER TABLE liniya ADD COLUMN IF NOT EXISTS istemol_uzunlik DECIMAL(10,2) DEFAULT 0`).catch(() => {});
 
 app.listen(5000, () =>
   console.log("Server 5000-portda MySQL bilan ishga tushdi"),

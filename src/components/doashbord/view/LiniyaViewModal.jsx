@@ -53,68 +53,95 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
 
   const parseArr = (val, fallback = []) => {
     if (Array.isArray(val)) return val;
-    try {
-      return JSON.parse(val) || fallback;
-    } catch {
-      return fallback;
-    }
-  };
-
-  const handleExport = () => {
-    if (!data) return;
-
-    const simlar = parseArr(data.simlar);
-    const izolyatorlar = parseArr(data.izolyatorlar);
-    const traverslar = parseArr(data.traverslar);
-
-    const rows = [
-      ["LINIYA MA'LUMOTLARI", ""],
-      ["", ""],
-      ["Nomi", data.name],
-      ["Inventar raqami", data.inventar_raqami],
-      ["Fider", data.fider],
-      ["Kuchlanishi", data.kuchlanishi],
-      ["Hisob", data.hisob],
-      ["Jami uzunligi (km)", data.jami_uzunligi],
-      ["Jami izolyator (dona)", data.jami_izolyator],
-      ["Jami travers (dona)", data.jami_travers],
-      ["", ""],
-      ["SIMLAR", ""],
-      ["Sim turi", "Uzunligi (km)"],
-      ...simlar.map((s) => [s.sim_turi, s.sim_uzunligi]),
-      ["", ""],
-      ["IZOLYATORLAR", ""],
-      ["Turi", "Soni (dona)"],
-      ...izolyatorlar.map((i) => [i.turi, i.soni]),
-      ["", ""],
-      ["TRAVERSLAR", ""],
-      ["Turi", "Soni (dona)"],
-      ...traverslar.map((t) => [t.turi, t.soni]),
-      ["", ""],
-      ["TEMIR-BETON TAYANCHLAR", ""],
-      ["Oddiy", data.tb_oddiy],
-      ["1-tirgakli", data.tb_bir_tirgakli],
-      ["2-tirgakli", data.tb_ikki_tirgakli],
-      ["", ""],
-      ["YOG'OCH TAYANCHLAR", ""],
-      ["Oddiy", data.yg_oddiy],
-      ["1-tirgakli", data.yg_bir_tirgakli],
-      ["2-tirgakli", data.yg_ikki_tirgakli],
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{ wch: 28 }, { wch: 30 }];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Liniya");
-    XLSX.writeFile(wb, `Liniya_${data.name || data.id}.xlsx`);
+    try { return JSON.parse(val) || fallback; } catch { return fallback; }
   };
 
   if (!data) return null;
 
-  const simlar = parseArr(data.simlar);
-  const izolyatorlar = parseArr(data.izolyatorlar);
-  const traverslar = parseArr(data.traverslar);
+  const bolimlar = parseArr(data.bolimlar);
+
+  const handleExport = () => {
+    const wb = XLSX.utils.book_new();
+    const ws = {};
+
+    const hStyle = {
+      font: { bold: true },
+      fill: { patternType: "solid", fgColor: { rgb: "BDBDBD" } },
+      alignment: { horizontal: "center" },
+    };
+
+    const set = (r, c, v, style) => {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const t = typeof v === "number" ? "n" : "s";
+      ws[addr] = style ? { v: v ?? "", t, s: style } : { v: v ?? "", t };
+    };
+
+    let row = 0;
+
+    // ── Asosiy ma'lumotlar ──────────────────────────────────
+    const mainH = ["Nomi", "Inventar", "Fider", "Kuchlanishi", "Ishga tushirilgan yili", "Jami (km)", "TET (km)", "Iste'mol (km)"];
+    mainH.forEach((h, c) => set(row, c, h, hStyle));
+    row++;
+    [
+      data.name, data.inventar_raqami, data.fider, data.kuchlanishi,
+      data.ishga_tushirilgan_yili || "",
+      data.jami_uzunligi || 0, data.tet_uzunlik || 0, data.istemol_uzunlik || 0,
+    ].forEach((v, c) => set(row, c, v));
+    row += 2;
+
+    // ── Bo'limlar ──────────────────────────────────────────
+    const bolimCols = [
+      "Sim turi", "Uzunligi (km)",
+      "Izol turi", "Izol soni",
+      "Trav turi", "Trav soni",
+      "TB Oddiy", "TB 1-tirgak", "TB 2-tirgak",
+      "YG Oddiy", "YG 1-tirgak", "YG 2-tirgak",
+    ];
+
+    bolimlar.forEach((b, bIdx) => {
+      // Bo'lim sarlavhasi
+      set(row, 0, `BO'LIM ${bIdx + 1}`, hStyle);
+      set(row, 1, b.hisob === "tet" ? "TET" : "ISTE'MOLCHI", hStyle);
+      set(row, 2, b.ishga_tushirilgan_yili ? `${b.ishga_tushirilgan_yili} yil` : "", hStyle);
+      row++;
+
+      // Ustun sarlavhalari
+      bolimCols.forEach((h, c) => set(row, c, h, hStyle));
+      row++;
+
+      // Ma'lumot satrlari (simlar / izolyatorlar / traverslar parallel)
+      const maxLen = Math.max(
+        (b.simlar || []).length,
+        (b.izolyatorlar || []).length,
+        (b.traverslar || []).length,
+        1,
+      );
+      for (let i = 0; i < maxLen; i++) {
+        const sim  = (b.simlar        || [])[i] || {};
+        const izol = (b.izolyatorlar  || [])[i] || {};
+        const trav = (b.traverslar    || [])[i] || {};
+        [
+          sim.sim_turi,  sim.sim_uzunligi,
+          izol.turi,     izol.soni,
+          trav.turi,     trav.soni,
+          i === 0 ? (b.tb_oddiy         ?? "") : "",
+          i === 0 ? (b.tb_bir_tirgakli  ?? "") : "",
+          i === 0 ? (b.tb_ikki_tirgakli ?? "") : "",
+          i === 0 ? (b.yg_oddiy         ?? "") : "",
+          i === 0 ? (b.yg_bir_tirgakli  ?? "") : "",
+          i === 0 ? (b.yg_ikki_tirgakli ?? "") : "",
+        ].forEach((v, c) => set(row, c, v ?? ""));
+        row++;
+      }
+      row++; // bo'limlar orasidagi bo'sh qator
+    });
+
+    ws["!ref"]  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: row, c: 11 } });
+    ws["!cols"] = Array(12).fill({ wch: 16 });
+
+    XLSX.utils.book_append_sheet(wb, ws, "Liniya");
+    XLSX.writeFile(wb, `Liniya_${data.name || data.id}.xlsx`);
+  };
 
   const Field = ({ label, value, accent }) => (
     <div className="bg-slate-800/60 rounded-xl px-3 py-2.5 border border-slate-700/50">
@@ -254,20 +281,19 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
 
               {/* Body */}
               <div className="px-8 py-6 space-y-6 overflow-y-auto max-h-[75vh] custom-scrollbar">
-                {/* Hisob badge */}
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${
-                      data.hisob === "tet"
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-orange-500/10 text-orange-400 border-orange-500/20"
-                    }`}
-                  >
-                    {data.hisob === "tet" ? "TET" : "ISTE'MOLCHI"}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase border bg-amber-500/10 text-amber-400 border-amber-500/20">
-                    {data.jami_uzunligi || 0} km
-                  </span>
+
+                {/* Uzunlik stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Jami uzunlik", value: data.jami_uzunligi || 0, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
+                    { label: "TET",          value: data.tet_uzunlik    || 0, color: "text-blue-400",  border: "border-blue-500/20",  bg: "bg-blue-500/5"  },
+                    { label: "Iste'molchi",  value: data.istemol_uzunlik|| 0, color: "text-orange-400",border: "border-orange-500/20",bg: "bg-orange-500/5"},
+                  ].map((s) => (
+                    <div key={s.label} className={`${s.bg} border ${s.border} rounded-2xl p-3 text-center`}>
+                      <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">{s.label}</div>
+                      <div className={`${s.color} font-black text-xl`}>{s.value} <span className="text-xs font-normal">km</span></div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Asosiy ma'lumotlar */}
@@ -275,110 +301,90 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <Columns size={12} /> Asosiy Ma'lumotlar
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <Field
-                      label="Inventar raqami"
-                      value={data.inventar_raqami}
-                    />
+                  <div className="grid grid-cols-3 gap-2">
+                    <Field label="Inventar raqami" value={data.inventar_raqami} />
                     <Field label="Fider" value={data.fider} />
-                    <Field
-                      label="Kuchlanishi"
-                      value={data.kuchlanishi}
-                      accent="text-amber-400"
-                    />
-                    <Field
-                      label="Jami uzunligi"
-                      value={`${data.jami_uzunligi || 0} km`}
-                      accent="text-amber-400"
-                    />
+                    <Field label="Kuchlanishi" value={data.kuchlanishi} accent="text-amber-400" />
                   </div>
                 </div>
 
                 <div className="h-px bg-slate-800" />
 
-                {/* Simlar, Izolyatorlar, Traverslar */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Simlar */}
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                      <Ruler size={12} /> Simlar
-                    </p>
-                    <ArrayTable
-                      items={simlar}
-                      col1Key="sim_turi"
-                      col2Key="sim_uzunligi"
-                      col1Label="Turi"
-                      col2Label="km"
-                      accentColor="text-blue-400"
-                    />
-                  </div>
-
-                  {/* Izolyatorlar */}
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                      <Shield size={12} /> Izolyatorlar
-                      {data.jami_izolyator ? (
-                        <span className="ml-auto text-white font-black text-[11px] bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/30">
-                          {data.jami_izolyator}
+                {/* Bo'limlar */}
+                {bolimlar.length > 0 ? bolimlar.map((bolim, bIdx) => {
+                  const simlar      = parseArr(bolim.simlar);
+                  const izolyatorlar= parseArr(bolim.izolyatorlar);
+                  const traverslar  = parseArr(bolim.traverslar);
+                  const isTet = bolim.hisob === "tet";
+                  return (
+                    <div key={bIdx} className="border border-slate-700/60 rounded-2xl overflow-hidden">
+                      {/* Bo'lim header */}
+                      <div className="flex items-center justify-between px-5 py-2.5 bg-slate-800/60 border-b border-slate-700">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bo'lim {bIdx + 1}</span>
+                          {bolim.ishga_tushirilgan_yili && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black border bg-amber-500/10 text-amber-400 border-amber-500/20">
+                              {bolim.ishga_tushirilgan_yili} yil
+                            </span>
+                          )}
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${isTet ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-orange-500/10 text-orange-400 border-orange-500/20"}`}>
+                          {isTet ? "TET" : "ISTE'MOLCHI"}
                         </span>
-                      ) : null}
-                    </p>
-                    <ArrayTable
-                      items={izolyatorlar}
-                      col1Key="turi"
-                      col2Key="soni"
-                      col1Label="Turi"
-                      col2Label="Soni"
-                      accentColor="text-emerald-400"
-                    />
-                  </div>
-
-                  {/* Traverslar */}
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-2">
-                      <GitBranch size={12} /> Traverslar
-                      {data.jami_travers ? (
-                        <span className="ml-auto text-white font-black text-[11px] bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/30">
-                          {data.jami_travers}
-                        </span>
-                      ) : null}
-                    </p>
-                    <ArrayTable
-                      items={traverslar}
-                      col1Key="turi"
-                      col2Key="soni"
-                      col1Label="Turi"
-                      col2Label="Soni"
-                      accentColor="text-violet-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="h-px bg-slate-800" />
-
-                {/* Tayanchlar */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-                      Temir-beton tayanchlar
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Field label="Oddiy" value={data.tb_oddiy} />
-                      <Field label="1-tirgakli" value={data.tb_bir_tirgakli} />
-                      <Field label="2-tirgakli" value={data.tb_ikki_tirgakli} />
+                      </div>
+                      <div className="p-4 space-y-4">
+                        {/* Simlar / Izolyatorlar / Traverslar */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1.5"><Ruler size={11} /> Simlar</p>
+                            <ArrayTable items={simlar} col1Key="sim_turi" col2Key="sim_uzunligi" col1Label="Turi" col2Label="km" accentColor="text-blue-400" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <Shield size={11} /> Izolyatorlar
+                              {izolyatorlar.reduce((s,i)=>s+(parseInt(i.soni)||0),0) > 0 &&
+                                <span className="ml-auto text-white text-[11px] font-black bg-emerald-500/20 px-1.5 py-0.5 rounded-md border border-emerald-500/30">
+                                  {izolyatorlar.reduce((s,i)=>s+(parseInt(i.soni)||0),0)}
+                                </span>}
+                            </p>
+                            <ArrayTable items={izolyatorlar} col1Key="turi" col2Key="soni" col1Label="Turi" col2Label="Soni" accentColor="text-emerald-400" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <GitBranch size={11} /> Traverslar
+                              {traverslar.reduce((s,t)=>s+(parseInt(t.soni)||0),0) > 0 &&
+                                <span className="ml-auto text-white text-[11px] font-black bg-violet-500/20 px-1.5 py-0.5 rounded-md border border-violet-500/30">
+                                  {traverslar.reduce((s,t)=>s+(parseInt(t.soni)||0),0)}
+                                </span>}
+                            </p>
+                            <ArrayTable items={traverslar} col1Key="turi" col2Key="soni" col1Label="Turi" col2Label="Soni" accentColor="text-violet-400" />
+                          </div>
+                        </div>
+                        {/* Tayanchlar */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Temir-beton tayanchlar</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <Field label="Oddiy"    value={bolim.tb_oddiy} />
+                              <Field label="1-tirgak" value={bolim.tb_bir_tirgakli} />
+                              <Field label="2-tirgak" value={bolim.tb_ikki_tirgakli} />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Yog'och tayanchlar</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <Field label="Oddiy"    value={bolim.yg_oddiy} />
+                              <Field label="1-tirgak" value={bolim.yg_bir_tirgakli} />
+                              <Field label="2-tirgak" value={bolim.yg_ikki_tirgakli} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">
-                      Yog'och tayanchlar
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Field label="Oddiy" value={data.yg_oddiy} />
-                      <Field label="1-tirgakli" value={data.yg_bir_tirgakli} />
-                      <Field label="2-tirgakli" value={data.yg_ikki_tirgakli} />
-                    </div>
-                  </div>
-                </div>
+                  );
+                }) : (
+                  <div className="text-center py-6 text-slate-600 italic text-sm">Bo'limlar ma'lumoti yo'q</div>
+                )}
 
                 <div className="h-px bg-slate-800" />
 

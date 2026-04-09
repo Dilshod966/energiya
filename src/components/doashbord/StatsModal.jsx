@@ -110,8 +110,8 @@ export default function StatsModal({ isOpen, onClose, statType, data }) {
       headers = ["Nomi", "Bo'lim", "Quvvat (kVA)", "Lin. jami (km)", "Lin. TET (km)", "Lin. Iste'mol (km)", "Trans. jami", "Trans. TET", "Trans. Iste'mol"];
       rows = filtered.map((i) => [i.name, i.parentName, i.quvvat, i.jami_uzunlik, i.uzunlik_tet, i.uzunlik_istemol, i.trans_jami, i.trans_tet, i.trans_istemol]);
     } else if (statType === "liniya") {
-      headers = ["Nomi", "Inventar", "Uzunlik (km)", "Trans. jami", "Trans. TET", "Trans. Iste'mol", "Balans", "Nimstansiya"];
-      rows = filtered.map((i) => [i.name, i.inventar_raqami, i.jami_uzunligi, i.jami_trafo, i.tet_trafo, i.istemol_trafo, i.hisob, i.parentName]);
+      headers = ["Nomi", "Inventar", "Jami (km)", "TET (km)", "Iste'mol (km)", "Trans. jami", "Trans. TET", "Trans. Iste'mol", "Nimstansiya"];
+      rows = filtered.map((i) => [i.name, i.inventar_raqami, i.jami_uzunligi, i.tet_uzunlik || 0, i.istemol_uzunlik || 0, i.jami_trafo, i.tet_trafo, i.istemol_trafo, i.parentName]);
     } else {
       headers = ["TP Raqami", "Quvvat", "Mahalla", "Ko'cha", "Fider", "Mukammal TP", "Joriy TP", "Balans", "Liniya"];
       rows = filtered.map((i) => [i.tp_raqami, i.quvvat, i.mahalla, i.kocha_nomi, i.fider, i.mukammal_tp, i.joriy_tp, i.hisob, i.parentName]);
@@ -362,10 +362,9 @@ export default function StatsModal({ isOpen, onClose, statType, data }) {
                         <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50 sticky top-0 z-10">
                           <th className="px-6 py-4 font-medium">Liniya Nomi</th>
                           <th className="px-6 py-4 text-center font-medium">Inventar</th>
-                          <th className="px-6 py-4 text-center font-medium">Uzunlik</th>
+                          <th className="px-6 py-4 text-center font-medium">Uzunlik (km)</th>
                           <th className="px-6 py-4 text-center font-medium">Transformatorlar</th>
                           <th className="px-6 py-4 text-center font-medium">Nimstansiya</th>
-                          <th className="px-6 py-4 text-center font-medium">Balans</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
@@ -375,7 +374,13 @@ export default function StatsModal({ isOpen, onClose, statType, data }) {
                             className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-all">
                             <td className="px-6 py-4 text-white font-medium">{item.name}</td>
                             <td className="px-6 py-4 text-center text-slate-400 text-xs italic">{item.inventar_raqami || "—"}</td>
-                            <td className="px-6 py-4 text-center text-amber-400 font-mono font-bold">{item.jami_uzunligi || 0} km</td>
+                            <td className="px-4 py-4 border-r border-slate-700/30">
+                              <div className="flex items-center justify-center">
+                                <StatBlock value={item.jami_uzunligi || 0} label="Jami"    color="text-amber-400" km />
+                                <StatBlock value={item.tet_uzunlik    || 0} label="TET"     color="text-blue-400"  border km />
+                                <StatBlock value={item.istemol_uzunlik|| 0} label="Iste'mol"color="text-orange-400" km />
+                              </div>
+                            </td>
                             <td className="px-4 py-4 border-r border-slate-700/30">
                               <div className="flex items-center justify-center">
                                 <StatBlock value={item.jami_trafo}   label="Jami"    color="text-white" />
@@ -384,7 +389,6 @@ export default function StatsModal({ isOpen, onClose, statType, data }) {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-center text-slate-400 text-xs">{item.parentName || "—"}</td>
-                            <td className="px-6 py-4 text-center"><HisobBadge hisob={item.hisob} /></td>
                           </motion.tr>
                         ))}
                       </tbody>

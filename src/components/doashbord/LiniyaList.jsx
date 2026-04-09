@@ -75,7 +75,7 @@ export default function LiniyaList() {
         <tr className="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-900/50">
           <th className="px-6 py-4 font-medium">Liniya Nomi</th>
           <th className="px-6 py-4 text-center font-medium">Inventar Raqami</th>
-          <th className="px-6 py-4 text-center font-medium">Uzunlik</th>
+          <th className="px-6 py-4 text-center font-medium">Uzunlik (km)</th>
           <th className="px-6 py-4 text-center font-medium">
             Transformatorlar
           </th>
@@ -105,8 +105,15 @@ export default function LiniyaList() {
               {item.inventar_raqami || "Mavjud emas"}
             </td>
 
-            <td className="px-6 py-4 text-center text-amber-400 font-mono font-bold">
-              {item.jami_uzunligi || 0} km
+            <td className="px-4 py-4 text-center">
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-amber-400 font-mono font-bold text-sm">{item.jami_uzunligi || 0}</span>
+                <div className="flex items-center gap-2 text-[10px] font-mono">
+                  <span className="text-blue-400">TET: {item.tet_uzunlik || 0}</span>
+                  <span className="text-slate-600">|</span>
+                  <span className="text-orange-400">Ist: {item.istemol_uzunlik || 0}</span>
+                </div>
+              </div>
             </td>
 
             {/* TRANSFORMATORLAR STATISTIKASI */}
