@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Wrench, Search } from "lucide-react";
+import { X, Wrench, Search, Plus, Trash2 } from "lucide-react";
 import { getLiniyalar, getTransformatorlar } from "../../../services/api";
 
 export default function QilinganIshlarModal({ isOpen, onClose, refreshData, editData }) {
@@ -8,8 +8,8 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
     tur: "liniya",
     ob_id: "",
     ob_nomi: "",
-    ism: "",
-    familiya: "",
+    ishchilar: [{ lavozim: "", ism_familiya: "" }],
+    naryad_raqami: "",
     ish_kun: "",
     ish_soat: "",
     ish_matni: "",
@@ -28,12 +28,17 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
       const kun = editData.ish_kun
         ? String(editData.ish_kun).split("T")[0]
         : "";
+      // Eski format (ism/familiya) bilan moslik
+      let ishchilar = editData.ishchilar;
+      if (!ishchilar || !Array.isArray(ishchilar) || ishchilar.length === 0) {
+        ishchilar = [{ lavozim: editData.lavozim || "", ism_familiya: editData.ism_familiya || (editData.ism && editData.familiya ? `${editData.ism} ${editData.familiya}` : editData.ism || editData.familiya || "") }];
+      }
       setForm({
         tur: editData.tur || "liniya",
         ob_id: editData.ob_id || "",
         ob_nomi: editData.ob_nomi || "",
-        ism: editData.ism || "",
-        familiya: editData.familiya || "",
+        ishchilar,
+        naryad_raqami: editData.naryad_raqami || "",
         ish_kun: kun,
         ish_soat: editData.ish_soat ? String(editData.ish_soat).slice(0, 5) : "",
         ish_matni: editData.ish_matni || "",
@@ -84,12 +89,37 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
     setShowDropdown(false);
   };
 
+  const updateIshchi = (index, field, value) => {
+    setForm((p) => {
+      const ishchilar = [...p.ishchilar];
+      ishchilar[index] = { ...ishchilar[index], [field]: value };
+      return { ...p, ishchilar };
+    });
+  };
+
+  const addIshchi = () => {
+    setForm((p) => ({
+      ...p,
+      ishchilar: [...p.ishchilar, { lavozim: "", ism_familiya: "" }],
+    }));
+  };
+
+  const removeIshchi = (index) => {
+    setForm((p) => ({
+      ...p,
+      ishchilar: p.ishchilar.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const ishchilarToliq = form.ishchilar.every(
+      (i) => i.lavozim.trim() && i.ism_familiya.trim()
+    );
     if (
       !form.ob_id ||
-      !form.ism ||
-      !form.familiya ||
+      !ishchilarToliq ||
+      !form.naryad_raqami.trim() ||
       !form.ish_kun ||
       !form.ish_soat ||
       !form.ish_matni.trim()
@@ -260,27 +290,73 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
                 </AnimatePresence>
               </div>
 
-              {/* Ism va Familiya */}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { key: "ism", label: "Ism", ph: "Masalan: Alisher" },
-                  { key: "familiya", label: "Familiya", ph: "Masalan: Karimov" },
-                ].map(({ key, label, ph }) => (
-                  <div key={key}>
-                    <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
-                      {label}
-                    </label>
-                    <input
-                      type="text"
-                      value={form[key]}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, [key]: e.target.value }))
-                      }
-                      placeholder={ph}
-                      className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
-                    />
-                  </div>
-                ))}
+              {/* Ishchilar ro'yxati */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] text-slate-500 uppercase tracking-widest">
+                    Ishchilar
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addIshchi}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-600/15 border border-violet-500/25 text-violet-400 hover:bg-violet-600/25 transition-all text-[11px] font-semibold"
+                  >
+                    <Plus size={12} />
+                    Qo'shish
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {form.ishchilar.map((ishchi, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="grid grid-cols-2 gap-2 relative group"
+                    >
+                      <input
+                        type="text"
+                        value={ishchi.lavozim}
+                        onChange={(e) => updateIshchi(index, "lavozim", e.target.value)}
+                        placeholder="Lavozim"
+                        className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
+                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={ishchi.ism_familiya}
+                          onChange={(e) => updateIshchi(index, "ism_familiya", e.target.value)}
+                          placeholder="Ism Familiya"
+                          className="flex-1 min-w-0 bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
+                        />
+                        {form.ishchilar.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeIshchi(index)}
+                            className="w-9 flex-shrink-0 flex items-center justify-center rounded-xl border border-red-500/20 text-red-500/60 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/40 transition-all"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Naryad raqami yoki Farmoyish */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
+                  Naryad raqami yoki Farmoyish
+                </label>
+                <input
+                  type="text"
+                  value={form.naryad_raqami}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, naryad_raqami: e.target.value }))
+                  }
+                  placeholder="Masalan: N-245 yoki Farmoyish №12"
+                  className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
+                />
               </div>
 
               {/* Vaqt */}
@@ -324,8 +400,8 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
                       setHozirgiVaqt(checked);
                       if (checked) {
                         const now = new Date();
-                        const kun = now.toLocaleDateString("sv-SE"); // YYYY-MM-DD
-                        const soat = now.toTimeString().slice(0, 5);  // HH:MM
+                        const kun = now.toLocaleDateString("sv-SE");
+                        const soat = now.toTimeString().slice(0, 5);
                         setForm((p) => ({ ...p, ish_kun: kun, ish_soat: soat }));
                       } else {
                         setForm((p) => ({ ...p, ish_kun: "", ish_soat: "" }));
