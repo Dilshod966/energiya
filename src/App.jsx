@@ -4,6 +4,7 @@ import MapView from "./components/map/MapView";
 import Sidebar from "./components/sidebar/Sidebar";
 import AddStationForm from "./components/admin/AddStationForm";
 import Dashboard from "./components/doashbord/Dashboard";
+import QilinganIshlarPage from "./components/ishlar/QilinganIshlarPage";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 
@@ -113,6 +114,9 @@ function AppLayout() {
               </>
             }
           />
+
+          {/* Qilingan Ishlar sahifasi */}
+          <Route path="/ishlar" element={<QilinganIshlarPage />} />
 
           {/* Admin / Stansiya qo'shish sahifasi */}
           <Route

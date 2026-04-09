@@ -48,13 +48,13 @@ export default function LiniyaList() {
     show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
-  function StatBlock({ value, label, color, border }) {
+  function StatBlock({ value, label, color, border, unit = "ta" }) {
     return (
       <div
         className={`flex flex-col items-center w-16 ${border ? "border-x border-slate-700/50" : ""}`}
       >
         <span className={`${color} font-mono text-[13px] leading-none`}>
-          {value || 0} ta
+          {value || 0} {unit}
         </span>
         <span className="text-[10px] uppercase text-slate-500 mt-1">
           {label}
@@ -105,14 +105,27 @@ export default function LiniyaList() {
               {item.inventar_raqami || "Mavjud emas"}
             </td>
 
-            <td className="px-4 py-4 text-center">
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-amber-400 font-mono font-bold text-sm">{item.jami_uzunligi || 0}</span>
-                <div className="flex items-center gap-2 text-[10px] font-mono">
-                  <span className="text-blue-400">TET: {item.tet_uzunlik || 0}</span>
-                  <span className="text-slate-600">|</span>
-                  <span className="text-orange-400">Ist: {item.istemol_uzunlik || 0}</span>
-                </div>
+            <td className="px-4 py-4">
+              <div className="flex items-center justify-center">
+                <StatBlock
+                  value={item.jami_uzunligi}
+                  label="Jami"
+                  color="text-white"
+                  unit="km"
+                />
+                <StatBlock
+                  value={item.tet_uzunlik}
+                  label="TET"
+                  color="text-blue-400"
+                  border
+                  unit="km"
+                />
+                <StatBlock
+                  value={item.istemol_uzunlik}
+                  label="Iste'mol"
+                  color="text-amber-400"
+                  unit="km"
+                />
               </div>
             </td>
 

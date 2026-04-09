@@ -12,6 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import IshDetailModal from "../../ishlar/IshDetailModal";
 
 const formatIshDate = (d) => {
   if (!d) return "";
@@ -22,6 +23,7 @@ const formatIshDate = (d) => {
 
 export default function LiniyaViewModal({ isOpen, onClose, data }) {
   const [ishlar, setIshlar] = useState([]);
+  const [selectedIsh, setSelectedIsh] = useState(null);
 
   // ESC tugmasi
   const handleKeyDown = useCallback(
@@ -195,7 +197,7 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
     </div>
   );
 
-  return createPortal(
+  const portal = createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -407,39 +409,82 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {ishlar.map((ish, idx) => (
-                        <motion.div
-                          key={ish.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.04 }}
-                          className="flex gap-0 rounded-2xl bg-slate-800/40 border border-slate-700/40 overflow-hidden hover:border-slate-600/50 transition-all"
-                        >
-                          {/* Amber stripe (liniya rangi) */}
-                          <div className="w-1 flex-shrink-0 bg-amber-500" />
-
-                          <div className="flex-1 px-4 py-3 min-w-0">
-                            {/* Worker */}
-                            <p className="text-violet-400 text-[11px] font-bold mb-1.5">
-                              {ish.ism} {ish.familiya}
-                            </p>
-                            {/* Ish matni */}
-                            <p className="text-slate-300 text-[12px] leading-relaxed whitespace-pre-wrap">
-                              {ish.ish_matni}
-                            </p>
-                            {/* Date + time */}
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="text-[9px] text-slate-500 font-mono bg-slate-800 px-2 py-0.5 rounded-md">
-                                {formatIshDate(ish.ish_kun)}
-                              </span>
-                              <span className="text-slate-700 text-[9px]">•</span>
-                              <span className="text-[9px] text-slate-500 font-mono bg-slate-800 px-2 py-0.5 rounded-md">
-                                {String(ish.ish_soat || "").slice(0, 5)}
-                              </span>
+                      {ishlar.map((ish, idx) => {
+                        const status = ish.status || "Jarayonda";
+                        const isTugallandi = status === "Tugallandi";
+                        const statusStyle = isTugallandi
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/25";
+                        const ishchilar = Array.isArray(ish.ishchilar) && ish.ishchilar.length > 0
+                          ? ish.ishchilar
+                          : ish.ism || ish.familiya
+                          ? [{ lavozim: "", ism_familiya: `${ish.ism || ""} ${ish.familiya || ""}`.trim() }]
+                          : [];
+                        const boshKun  = ish.boshlanish_kun  || ish.ish_kun;
+                        const boshSoat = ish.boshlanish_soat || ish.ish_soat;
+                        return (
+                          <motion.div
+                            key={ish.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.04 }}
+                            onClick={() => isTugallandi && setSelectedIsh(ish)}
+                            className={`flex gap-0 rounded-2xl bg-slate-800/40 border border-slate-700/40 overflow-hidden transition-all ${
+                              isTugallandi
+                                ? "cursor-pointer hover:border-violet-500/40 hover:bg-slate-800/70"
+                                : ""
+                            }`}
+                          >
+                            <div className="w-1 flex-shrink-0 bg-amber-500" />
+                            <div className="flex-1 px-4 py-3 min-w-0">
+                              {/* Yuqori qator: naryad + status */}
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex flex-col gap-1 min-w-0">
+                                  {ish.naryad_raqami && (
+                                    <span className="text-[10px] text-slate-400 font-mono">📋 {ish.naryad_raqami}</span>
+                                  )}
+                                  {/* Ishchilar */}
+                                  {ishchilar.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {ishchilar.map((w, i) => (
+                                        <span key={i} className="text-[10px] text-violet-300 bg-violet-500/10 border border-violet-500/20 rounded-lg px-2 py-0.5 flex items-center gap-1">
+                                          {w.lavozim && <span className="text-violet-500 font-semibold">{w.lavozim}</span>}
+                                          {w.lavozim && <span className="text-violet-600">·</span>}
+                                          <span>{w.ism_familiya}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Status badge */}
+                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border flex-shrink-0 ${statusStyle}`}>
+                                  {status}
+                                </span>
+                              </div>
+                              {/* Ish matni */}
+                              {ish.ish_matni && (
+                                <p className="text-slate-400 text-[11px] leading-relaxed mb-2">{ish.ish_matni}</p>
+                              )}
+                              {/* Vaqtlar */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[9px] text-slate-600 uppercase tracking-wider">Boshlandi</span>
+                                <span className="text-[9px] text-slate-400 font-mono bg-slate-800 px-2 py-0.5 rounded-md">{formatIshDate(boshKun)}</span>
+                                <span className="text-[9px] text-slate-400 font-mono bg-slate-800 px-2 py-0.5 rounded-md">{String(boshSoat || "").slice(0, 5)}</span>
+                                <span className="text-slate-700">→</span>
+                                <span className="text-[9px] text-slate-600 uppercase tracking-wider">Tugadi</span>
+                                {ish.tugash_kun ? (
+                                  <>
+                                    <span className="text-[9px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md">{formatIshDate(ish.tugash_kun)}</span>
+                                    <span className="text-[9px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md">{String(ish.tugash_soat || "").slice(0, 5)}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-[9px] text-slate-600 font-mono bg-slate-800/60 px-2 py-0.5 rounded-md italic">—</span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -450,5 +495,16 @@ export default function LiniyaViewModal({ isOpen, onClose, data }) {
       )}
     </AnimatePresence>,
     document.body,
+  );
+
+  return (
+    <>
+      {portal}
+      <IshDetailModal
+        isOpen={!!selectedIsh}
+        ish={selectedIsh}
+        onClose={() => setSelectedIsh(null)}
+      />
+    </>
   );
 }

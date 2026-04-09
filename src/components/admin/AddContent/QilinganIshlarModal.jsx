@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Wrench, Search } from "lucide-react";
+import { X, Wrench, Search, Plus, Trash2 } from "lucide-react";
 import { getLiniyalar, getTransformatorlar } from "../../../services/api";
 
 export default function QilinganIshlarModal({ isOpen, onClose, refreshData, editData }) {
@@ -8,11 +8,11 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
     tur: "liniya",
     ob_id: "",
     ob_nomi: "",
-    ism: "",
-    familiya: "",
-    ish_kun: "",
-    ish_soat: "",
-    ish_matni: "",
+    ishchilar: [{ lavozim: "", ism_familiya: "" }],
+    naryad_raqami: "",
+    status: "Jarayonda",
+    boshlanish_kun: "",
+    boshlanish_soat: "",
   };
   const [form, setForm] = useState(initForm);
   const [obList, setObList] = useState([]);
@@ -28,15 +28,20 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
       const kun = editData.ish_kun
         ? String(editData.ish_kun).split("T")[0]
         : "";
+      // Eski format (ism/familiya) bilan moslik
+      let ishchilar = editData.ishchilar;
+      if (!ishchilar || !Array.isArray(ishchilar) || ishchilar.length === 0) {
+        ishchilar = [{ lavozim: editData.lavozim || "", ism_familiya: editData.ism_familiya || (editData.ism && editData.familiya ? `${editData.ism} ${editData.familiya}` : editData.ism || editData.familiya || "") }];
+      }
       setForm({
         tur: editData.tur || "liniya",
         ob_id: editData.ob_id || "",
         ob_nomi: editData.ob_nomi || "",
-        ism: editData.ism || "",
-        familiya: editData.familiya || "",
-        ish_kun: kun,
-        ish_soat: editData.ish_soat ? String(editData.ish_soat).slice(0, 5) : "",
-        ish_matni: editData.ish_matni || "",
+        ishchilar,
+        naryad_raqami: editData.naryad_raqami || "",
+        status: editData.status || "Jarayonda",
+        boshlanish_kun: editData.boshlanish_kun ? String(editData.boshlanish_kun).split("T")[0] : kun,
+        boshlanish_soat: editData.boshlanish_soat ? String(editData.boshlanish_soat).slice(0, 5) : (editData.ish_soat ? String(editData.ish_soat).slice(0, 5) : ""),
       });
       setSearchTerm(editData.ob_nomi || "");
     } else {
@@ -84,15 +89,39 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
     setShowDropdown(false);
   };
 
+  const updateIshchi = (index, field, value) => {
+    setForm((p) => {
+      const ishchilar = [...p.ishchilar];
+      ishchilar[index] = { ...ishchilar[index], [field]: value };
+      return { ...p, ishchilar };
+    });
+  };
+
+  const addIshchi = () => {
+    setForm((p) => ({
+      ...p,
+      ishchilar: [...p.ishchilar, { lavozim: "", ism_familiya: "" }],
+    }));
+  };
+
+  const removeIshchi = (index) => {
+    setForm((p) => ({
+      ...p,
+      ishchilar: p.ishchilar.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const ishchilarToliq = form.ishchilar.every(
+      (i) => i.lavozim.trim() && i.ism_familiya.trim()
+    );
     if (
       !form.ob_id ||
-      !form.ism ||
-      !form.familiya ||
-      !form.ish_kun ||
-      !form.ish_soat ||
-      !form.ish_matni.trim()
+      !ishchilarToliq ||
+      !form.naryad_raqami.trim() ||
+      !form.boshlanish_kun ||
+      !form.boshlanish_soat
     ) {
       alert("Barcha maydonlarni to'ldiring!");
       return;
@@ -260,58 +289,137 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
                 </AnimatePresence>
               </div>
 
-              {/* Ism va Familiya */}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { key: "ism", label: "Ism", ph: "Masalan: Alisher" },
-                  { key: "familiya", label: "Familiya", ph: "Masalan: Karimov" },
-                ].map(({ key, label, ph }) => (
-                  <div key={key}>
-                    <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
-                      {label}
-                    </label>
-                    <input
-                      type="text"
-                      value={form[key]}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, [key]: e.target.value }))
-                      }
-                      placeholder={ph}
-                      className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
-                    />
-                  </div>
-                ))}
+              {/* Ishchilar ro'yxati */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] text-slate-500 uppercase tracking-widest">
+                    Ishchilar
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addIshchi}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-600/15 border border-violet-500/25 text-violet-400 hover:bg-violet-600/25 transition-all text-[11px] font-semibold"
+                  >
+                    <Plus size={12} />
+                    Qo'shish
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {form.ishchilar.map((ishchi, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="grid grid-cols-2 gap-2 relative group"
+                    >
+                      <input
+                        type="text"
+                        value={ishchi.lavozim}
+                        onChange={(e) => updateIshchi(index, "lavozim", e.target.value)}
+                        placeholder="Lavozim"
+                        className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
+                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={ishchi.ism_familiya}
+                          onChange={(e) => updateIshchi(index, "ism_familiya", e.target.value)}
+                          placeholder="Ism Familiya"
+                          className="flex-1 min-w-0 bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
+                        />
+                        {form.ishchilar.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeIshchi(index)}
+                            className="w-9 flex-shrink-0 flex items-center justify-center rounded-xl border border-red-500/20 text-red-500/60 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/40 transition-all"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
 
-              {/* Vaqt */}
+              {/* Status - faqat tahrirlashda ko'rinadi */}
+              {editData && (
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
+                    Holati
+                  </label>
+                  <div className="flex gap-2">
+                    {["Jarayonda", "Tugallandi"].map((s) => (
+                      <label
+                        key={s}
+                        className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border cursor-pointer transition-all text-[11px] font-semibold ${
+                          form.status === s
+                            ? s === "Tugallandi"
+                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                              : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                            : "border-white/5 text-slate-500 hover:border-white/10"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="status"
+                          value={s}
+                          checked={form.status === s}
+                          onChange={() => setForm((p) => ({ ...p, status: s }))}
+                          className="hidden"
+                        />
+                        <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          form.status === s
+                            ? s === "Tugallandi" ? "border-emerald-400" : "border-amber-400"
+                            : "border-slate-600"
+                        }`}>
+                          {form.status === s && (
+                            <div className={`w-1.5 h-1.5 rounded-full ${
+                              s === "Tugallandi" ? "bg-emerald-400" : "bg-amber-400"
+                            }`} />
+                          )}
+                        </div>
+                        {s}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Naryad raqami yoki Farmoyish */}
               <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
+                  Naryad raqami yoki Farmoyish
+                </label>
+                <input
+                  type="text"
+                  value={form.naryad_raqami}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, naryad_raqami: e.target.value }))
+                  }
+                  placeholder="Masalan: N-245 yoki Farmoyish №12"
+                  className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all"
+                />
+              </div>
+
+              {/* Boshlanish vaqti */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
+                  Boshlanish vaqti
+                </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
-                      Ish kuni
-                    </label>
-                    <input
-                      type="date"
-                      value={form.ish_kun}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, ish_kun: e.target.value }))
-                      }
-                      className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-violet-500/40 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
-                      Soat
-                    </label>
-                    <input
-                      type="time"
-                      value={form.ish_soat}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, ish_soat: e.target.value }))
-                      }
-                      className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-violet-500/40 transition-all"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    value={form.boshlanish_kun}
+                    onChange={(e) => setForm((p) => ({ ...p, boshlanish_kun: e.target.value }))}
+                    className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-violet-500/40 transition-all"
+                  />
+                  <input
+                    type="time"
+                    value={form.boshlanish_soat}
+                    onChange={(e) => setForm((p) => ({ ...p, boshlanish_soat: e.target.value }))}
+                    className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-violet-500/40 transition-all"
+                  />
                 </div>
                 {/* Hozirgi vaqt checkbox */}
                 <label className="flex items-center gap-2.5 mt-2.5 cursor-pointer w-fit group">
@@ -324,11 +432,14 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
                       setHozirgiVaqt(checked);
                       if (checked) {
                         const now = new Date();
-                        const kun = now.toLocaleDateString("sv-SE"); // YYYY-MM-DD
-                        const soat = now.toTimeString().slice(0, 5);  // HH:MM
-                        setForm((p) => ({ ...p, ish_kun: kun, ish_soat: soat }));
+                        const y = now.getFullYear();
+                        const mo = String(now.getMonth() + 1).padStart(2, "0");
+                        const d = String(now.getDate()).padStart(2, "0");
+                        const kun = `${y}-${mo}-${d}`;
+                        const soat = now.toTimeString().slice(0, 5);
+                        setForm((p) => ({ ...p, boshlanish_kun: kun, boshlanish_soat: soat }));
                       } else {
-                        setForm((p) => ({ ...p, ish_kun: "", ish_soat: "" }));
+                        setForm((p) => ({ ...p, boshlanish_kun: "", boshlanish_soat: "" }));
                       }
                     }}
                   />
@@ -346,25 +457,9 @@ export default function QilinganIshlarModal({ isOpen, onClose, refreshData, edit
                   <span className={`text-[11px] transition-colors select-none ${
                     hozirgiVaqt ? "text-violet-400" : "text-slate-500 group-hover:text-slate-400"
                   }`}>
-                    Hozirgi kun va vaqtni qo'llash
+                    Hozirgi vaqtni qo'llash
                   </span>
                 </label>
-              </div>
-
-              {/* Ish matni */}
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 block">
-                  Ish matni
-                </label>
-                <textarea
-                  value={form.ish_matni}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, ish_matni: e.target.value }))
-                  }
-                  placeholder="Qilingan ish haqida batafsil yozing..."
-                  rows={4}
-                  className="w-full bg-[#0f1829] border border-white/10 rounded-xl px-3.5 py-3 text-[13px] text-white placeholder:text-slate-600 outline-none focus:border-violet-500/40 transition-all resize-none"
-                />
               </div>
 
               {/* Buttons */}

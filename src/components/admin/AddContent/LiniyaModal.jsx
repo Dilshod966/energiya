@@ -15,7 +15,7 @@ const emptyBolim = () => ({
 
 const initialFormState = {
   parentId: "",
-  fider: "",
+  name: "",
   inventar_raqami: "",
   kuchlanishi: "",
   jami_uzunligi: "",
@@ -61,7 +61,7 @@ export default function LiniyaModal({ isOpen, onClose, refreshData, editData = n
           setFormData({
             parentId: editData.parentId ?? "",
             hisob: editData.hisob ?? "tet",
-            fider: editData.fider ?? "",
+            name: editData.name ?? editData.fider ?? "",
             inventar_raqami: editData.inventar_raqami ?? "",
             kuchlanishi: editData.kuchlanishi ?? "",
             jami_uzunligi: editData.jami_uzunligi ?? "",
@@ -194,11 +194,11 @@ export default function LiniyaModal({ isOpen, onClose, refreshData, editData = n
                   placeholder="Inventar raqami"
                 />
                 <input
-                  name="fider"
-                  value={formData.fider}
+                  name="name"
+                  value={formData.name}
                   onChange={handleTopChange}
                   className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white outline-none focus:border-amber-500"
-                  placeholder="Fider nomi"
+                  placeholder="Liniya nomi"
                 />
                 <input
                   name="kuchlanishi"

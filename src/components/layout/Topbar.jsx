@@ -8,6 +8,7 @@ import {
   Moon,
   Sun,
   Check,
+  Wrench,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -15,9 +16,10 @@ import { useStation } from "../../context/StationContext";
 import logo from "./logo2.png";
 
 const NAV_ITEMS = [
-  { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { id: "map",       icon: Layers,          label: "Xarita"    },
-  { id: "admin",     icon: Settings,        label: "Settings"  },
+  { id: "dashboard", icon: LayoutDashboard, label: "Dashboard"       },
+  { id: "map",       icon: Layers,          label: "Xarita"          },
+  { id: "ishlar",    icon: Wrench,          label: "Qilingan Ishlar" },
+  { id: "admin",     icon: Settings,        label: "Settings"        },
 ];
 
 const THEME_OPTIONS = [

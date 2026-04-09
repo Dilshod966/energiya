@@ -48,9 +48,41 @@ const db = await mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  dateStrings: true,
 });
 
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+
+// Tugatish uchun alohida multer (farmoyish va ish rasmlari)
+const tugatishStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = file.fieldname === "farmoyish_rasmlar"
+      ? path.join(__dirname, "public/uploads/farmoyish/")
+      : path.join(__dirname, "public/uploads/ish_rasmlar/");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${file.fieldname}_${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`);
+  },
+});
+const uploadTugatish = multer({ storage: tugatishStorage });
+
+// Ish jadvaliga yangi ustunlar qo'shish (agar mavjud bo'lmasa)
+try {
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS ishchilar TEXT DEFAULT NULL`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS naryad_raqami VARCHAR(255) DEFAULT NULL`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Jarayonda'`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS boshlanish_kun DATE DEFAULT NULL`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS boshlanish_soat TIME DEFAULT NULL`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS tugash_kun DATE DEFAULT NULL`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS tugash_soat TIME DEFAULT NULL`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS farmoyish_rasmlar TEXT DEFAULT NULL`);
+  await db.query(`ALTER TABLE ish ADD COLUMN IF NOT EXISTS ish_rasmlar TEXT DEFAULT NULL`);
+} catch (e) {
+  // ustun allaqachon mavjud yoki boshqa xato — o'tkazib yuboramiz
+}
 
 // 1. Ustachilik (Odatda buni 'hisob'i bo'lmaydi, lekin kerak bo'lsa qo'shish mumkin)
 app.post("/api/ustachilik", async (req, res) => {
@@ -110,9 +142,9 @@ function calcLiniyaStats(bolimArr) {
 
 app.post("/api/liniya", async (req, res) => {
   try {
-    const { parentId, inventar_raqami, fider, kuchlanishi, ishga_tushirilgan_yili, bolimlar } = req.body;
+    const { parentId, name: nameRaw, inventar_raqami, fider, kuchlanishi, ishga_tushirilgan_yili, bolimlar } = req.body;
     const bolimArr = Array.isArray(bolimlar) ? bolimlar : [];
-    const name = `${fider || ""} ${kuchlanishi || ""}`.trim();
+    const name = (nameRaw || fider || "").trim();
     const stats = calcLiniyaStats(bolimArr);
 
     await db.query(
@@ -664,9 +696,9 @@ app.put("/api/nimstansiya/:id", async (req, res) => {
 app.put("/api/liniya/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { parentId, inventar_raqami, fider, kuchlanishi, ishga_tushirilgan_yili, bolimlar } = req.body;
+    const { parentId, name: nameRaw, inventar_raqami, fider, kuchlanishi, ishga_tushirilgan_yili, bolimlar } = req.body;
     const bolimArr = Array.isArray(bolimlar) ? bolimlar : [];
-    const name = `${fider || ""} ${kuchlanishi || ""}`.trim();
+    const name = (nameRaw || fider || "").trim();
     const stats = calcLiniyaStats(bolimArr);
 
     await db.query(
@@ -704,7 +736,13 @@ app.get("/api/ish/filter", async (req, res) => {
       "SELECT * FROM ish WHERE tur = ? AND ob_id = ? ORDER BY id DESC",
       [tur, Number(ob_id)]
     );
-    res.json(rows);
+    const parsed = rows.map((r) => ({
+      ...r,
+      ishchilar: (() => { try { return r.ishchilar ? JSON.parse(r.ishchilar) : null; } catch { return null; } })(),
+      farmoyish_rasmlar: (() => { try { return r.farmoyish_rasmlar ? JSON.parse(r.farmoyish_rasmlar) : []; } catch { return []; } })(),
+      ish_rasmlar: (() => { try { return r.ish_rasmlar ? JSON.parse(r.ish_rasmlar) : []; } catch { return []; } })(),
+    }));
+    res.json(parsed);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -714,7 +752,13 @@ app.get("/api/ish/filter", async (req, res) => {
 app.get("/api/ish", async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM ish ORDER BY id DESC");
-    res.json(rows);
+    const parsed = rows.map((r) => ({
+      ...r,
+      ishchilar: (() => { try { return r.ishchilar ? JSON.parse(r.ishchilar) : null; } catch { return null; } })(),
+      farmoyish_rasmlar: (() => { try { return r.farmoyish_rasmlar ? JSON.parse(r.farmoyish_rasmlar) : []; } catch { return []; } })(),
+      ish_rasmlar: (() => { try { return r.ish_rasmlar ? JSON.parse(r.ish_rasmlar) : []; } catch { return []; } })(),
+    }));
+    res.json(parsed);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -723,13 +767,18 @@ app.get("/api/ish", async (req, res) => {
 // POST - Yangi ish qo'shish
 app.post("/api/ish", async (req, res) => {
   try {
-    const { tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni } = req.body;
-    if (!tur || !ob_id || !ism || !familiya || !ish_kun || !ish_soat || !ish_matni) {
+    const { tur, ob_id, ob_nomi, ishchilar, naryad_raqami, status, boshlanish_kun, boshlanish_soat, tugash_kun, tugash_soat } = req.body;
+    if (!tur || !ob_id || !boshlanish_kun || !boshlanish_soat || !naryad_raqami) {
       return res.status(400).json({ error: "Barcha maydonlar to'ldirilishi shart" });
     }
+    const birinchi = Array.isArray(ishchilar) && ishchilar.length > 0 ? ishchilar[0] : {};
+    const ismVal = birinchi.ism_familiya || "";
+    const ishchilarJson = JSON.stringify(ishchilar || []);
+    const statusVal = status || "Jarayonda";
+
     const [result] = await db.query(
-      "INSERT INTO ish (tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni]
+      "INSERT INTO ish (tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni, ishchilar, naryad_raqami, status, boshlanish_kun, boshlanish_soat, tugash_kun, tugash_soat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [tur, ob_id, ob_nomi, ismVal, "", boshlanish_kun, boshlanish_soat, "", ishchilarJson, naryad_raqami, statusVal, boshlanish_kun, boshlanish_soat, tugash_kun || null, tugash_soat || null]
     );
     res.status(201).json({ message: "Ish qo'shildi", id: result.insertId });
   } catch (err) {
@@ -741,12 +790,68 @@ app.post("/api/ish", async (req, res) => {
 app.put("/api/ish/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni } = req.body;
+    const { tur, ob_id, ob_nomi, ishchilar, naryad_raqami, status, boshlanish_kun, boshlanish_soat, tugash_kun, tugash_soat } = req.body;
+    const birinchi = Array.isArray(ishchilar) && ishchilar.length > 0 ? ishchilar[0] : {};
+    const ismVal = birinchi.ism_familiya || "";
+    const ishchilarJson = JSON.stringify(ishchilar || []);
+    const statusVal = status || "Jarayonda";
+
     await db.query(
-      "UPDATE ish SET tur=?, ob_id=?, ob_nomi=?, ism=?, familiya=?, ish_kun=?, ish_soat=?, ish_matni=? WHERE id=?",
-      [tur, ob_id, ob_nomi, ism, familiya, ish_kun, ish_soat, ish_matni, id]
+      "UPDATE ish SET tur=?, ob_id=?, ob_nomi=?, ism=?, familiya=?, ish_kun=?, ish_soat=?, ish_matni=?, ishchilar=?, naryad_raqami=?, status=?, boshlanish_kun=?, boshlanish_soat=?, tugash_kun=?, tugash_soat=? WHERE id=?",
+      [tur, ob_id, ob_nomi, ismVal, "", boshlanish_kun || null, boshlanish_soat || null, "", ishchilarJson, naryad_raqami, statusVal, boshlanish_kun || null, boshlanish_soat || null, tugash_kun || null, tugash_soat || null, id]
     );
     res.json({ success: true, message: "Ish yangilandi" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - Ishni tugatish (rasm va matn bilan)
+app.post("/api/ish/:id/tugatish", uploadTugatish.fields([
+  { name: "farmoyish_rasmlar", maxCount: 20 },
+  { name: "ish_rasmlar", maxCount: 20 },
+]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      ish_matni, status, tugash_kun, tugash_soat,
+      tur, ob_id, ob_nomi, naryad_raqami,
+      boshlanish_kun, boshlanish_soat, ishchilar,
+    } = req.body;
+
+    const farmoyishFiles = (req.files?.farmoyish_rasmlar || []).map(
+      (f) => `/uploads/farmoyish/${f.filename}`
+    );
+    const ishFiles = (req.files?.ish_rasmlar || []).map(
+      (f) => `/uploads/ish_rasmlar/${f.filename}`
+    );
+
+    const ishchilarArr = (() => {
+      try { return JSON.parse(ishchilar || "[]"); } catch { return []; }
+    })();
+    const ismVal = ishchilarArr[0]?.ism_familiya || "";
+
+    await db.query(
+      `UPDATE ish SET
+        tur=?, ob_id=?, ob_nomi=?, ism=?, familiya=?,
+        ish_kun=?, ish_soat=?, ish_matni=?,
+        ishchilar=?, naryad_raqami=?, status=?,
+        boshlanish_kun=?, boshlanish_soat=?,
+        tugash_kun=?, tugash_soat=?,
+        farmoyish_rasmlar=?, ish_rasmlar=?
+      WHERE id=?`,
+      [
+        tur, ob_id, ob_nomi, ismVal, "",
+        boshlanish_kun || null, boshlanish_soat || null, ish_matni || "",
+        JSON.stringify(ishchilarArr), naryad_raqami || "", status || "Tugallandi",
+        boshlanish_kun || null, boshlanish_soat || null,
+        tugash_kun || null, tugash_soat || null,
+        JSON.stringify(farmoyishFiles),
+        JSON.stringify(ishFiles),
+        id,
+      ]
+    );
+    res.json({ success: true, farmoyish_rasmlar: farmoyishFiles, ish_rasmlar: ishFiles });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -942,6 +1047,7 @@ app.get('/api/export/transformator/:id', async (req, res) => {
 db.query(`ALTER TABLE liniya ADD COLUMN IF NOT EXISTS bolimlar LONGTEXT DEFAULT NULL`).catch(() => {});
 db.query(`ALTER TABLE liniya ADD COLUMN IF NOT EXISTS tet_uzunlik DECIMAL(10,2) DEFAULT 0`).catch(() => {});
 db.query(`ALTER TABLE liniya ADD COLUMN IF NOT EXISTS istemol_uzunlik DECIMAL(10,2) DEFAULT 0`).catch(() => {});
+db.query(`ALTER TABLE liniya ADD COLUMN IF NOT EXISTS ishga_tushirilgan_yili INT DEFAULT NULL`).catch(() => {});
 
 app.listen(5000, () =>
   console.log("Server 5000-portda MySQL bilan ishga tushdi"),
